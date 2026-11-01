@@ -2,5 +2,394 @@
   "schema": 1,
   "domain": "tds",
   "asOf": "2026-11-01",
-  "rules": []
+  "rules": [
+    {
+      "id": "tds.393.6i.label",
+      "value": {
+        "section": "393(1) [Table Sl. No. 6(i)]",
+        "oldSection": "194C"
+      },
+      "unit": "label",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "Income-tax Act, 2025, s.393(1) Table, serial 6(i). Work under a contract, including supply of labour. Payer: a designated person. Old Act label: s.194C. Page opened 2026-11-01."
+    },
+    {
+      "id": "tds.393.6i.rate.individualBp",
+      "value": 100,
+      "unit": "bp",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "1% where the contractor is an individual or a Hindu undivided family."
+    },
+    {
+      "id": "tds.393.6i.rate.otherBp",
+      "value": 200,
+      "unit": "bp",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "2% where the contractor is any other person."
+    },
+    {
+      "id": "tds.393.6i.threshold.singleMinor",
+      "value": 3000000,
+      "unit": "minor",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "₹30,000 for any one sum. Paise. The chapeau deducts only where the sum or the aggregate exceeds the threshold, so ₹30,000 exactly is not over it."
+    },
+    {
+      "id": "tds.393.6i.threshold.aggregateMinor",
+      "value": 10000000,
+      "unit": "minor",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "₹1,00,000 aggregate in the tax year. Paise. ₹1,00,000 exactly does not exceed it."
+    },
+    {
+      "id": "tds.393.6ii.label",
+      "value": {
+        "section": "393(1) [Table Sl. No. 6(ii)]",
+        "oldSection": "194M"
+      },
+      "unit": "label",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "Payer: an individual or HUF other than a person required to deduct under serial 6(i), 6(iii), or 1(ii). Old Act label: s.194M. The page does not define designated person or specified person by turnover. The caller says whether this individual or HUF is required to deduct under 6(i) or 6(iii)."
+    },
+    {
+      "id": "tds.393.6ii.rateBp",
+      "value": 200,
+      "unit": "bp",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "2% of the sum. The rate does not depend on the payee type."
+    },
+    {
+      "id": "tds.393.6ii.threshold.aggregateMinor",
+      "value": 500000000,
+      "unit": "minor",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "Fifty lakh rupees, in paise. s.393(1)(a) deducts on the entire amount once the aggregate exceeds the threshold. It does not deduct only on the part above fifty lakh. The excess-only base is serial 8(ii), purchase of goods, and is a different row."
+    },
+    {
+      "id": "tds.393.6ii.categories",
+      "value": ["contractor", "professional"],
+      "unit": "list",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "Serial 6(ii) lists work under a contract, fees for professional services, and commission or brokerage. It does not list technical services, film royalty, call-centre charges, other royalty, or director remuneration."
+    },
+    {
+      "id": "tds.393.6iii.label",
+      "value": {
+        "section": "393(1) [Table Sl. No. 6(iii)]",
+        "oldSection": "194J"
+      },
+      "unit": "label",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "Fees for professional or technical services, director remuneration other than salary under s.392, royalty, and the sum in s.26(2)(h). Payer: a specified person. Old Act label: s.194J."
+    },
+    {
+      "id": "tds.393.6iii.rate.professionalBp",
+      "value": 1000,
+      "unit": "bp",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "10% for cases other than the 2% row. That includes professional fees, director remuneration, and royalty that is not the cinematographic-film royalty in the 2% row."
+    },
+    {
+      "id": "tds.393.6iii.rate.technicalBp",
+      "value": 200,
+      "unit": "bp",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "2% for fees for technical services that are not professional services, royalty for sale, distribution or exhibition of cinematographic films, and a payee engaged only in operating a call centre."
+    },
+    {
+      "id": "tds.393.6iii.technicalCategories",
+      "value": ["technical", "call_centre", "film_royalty"],
+      "unit": "list",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "Skill category names for the 2% row of serial 6(iii). professional, royalty, and director use the 10% row."
+    },
+    {
+      "id": "tds.393.6iii.threshold.aggregateMinor",
+      "value": 5000000,
+      "unit": "minor",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "₹50,000 for rows (a), (b), (d), and (e) of column B. Paise. Not the director row."
+    },
+    {
+      "id": "tds.393.6iii.threshold.directorMinor",
+      "value": 0,
+      "unit": "minor",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "Director remuneration in column B(c) has threshold Nil. Any sum above zero is deductible. Tax is on that sum, not again on earlier director sums already credited."
+    },
+    {
+      "id": "tds.393.base",
+      "value": "entire",
+      "unit": "base",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": true,
+      "note": "s.393(1)(a): on the entire amount of such income or sum, where the amount or aggregate of amounts exceeds the threshold. A single contract sum over ₹30,000 is taxed on that sum. Once the aggregate crosses, the entire aggregate is the base, including sums not yet taxed. A director sum is taxed on that sum alone."
+    },
+    {
+      "id": "tds.397.noPan.rateBp",
+      "value": 2000,
+      "unit": "bp",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/documents/d/guest/faqs-on-higher-rate-of-tds-under-section-397",
+      "verified": true,
+      "note": "Official FAQ opened 2026-11-01. s.397(2): if PAN is not furnished, deduct the highest of the rate in the relevant provision, the rate or rates in force, and 20%. The 5% ceiling is only for s.393(1) Table serial 8(ii) and 8(v). Those rows are not freelancer contract or fee rows. The pages opened do not show a rate in force higher than the s.393 rate for these rows, so the higher of the section rate and 20% is 20%."
+    },
+    {
+      "id": "tds.397.noPan.fivePercentSections",
+      "value": ["393(1) [Table Sl. No. 8(ii)]", "393(1) [Table Sl. No. 8(v)]"],
+      "unit": "list",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/documents/d/guest/faqs-on-higher-rate-of-tds-under-section-397",
+      "verified": true,
+      "note": "5% instead of 20% only for purchase of goods and e-commerce operator payments. Not applied to serial 6."
+    },
+    {
+      "id": "tds.206ab.apply",
+      "value": false,
+      "unit": "flag",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": false,
+      "note": "UNVERIFIED. The old non-filer higher deduction (Income-tax Act, 1961, s.206AB) is not mentioned on the s.393 page or the s.397(2) FAQ opened 2026-11-01. The bare Act PDF that was retrieved did not contain the deduction chapter, so the omission was not confirmed from the full Act text. This skill does not apply s.206AB on either side of 1 Apr 2026."
+    },
+    {
+      "id": "tds.paymentCode.map",
+      "value": {
+        "contractor.individual": "1023",
+        "contractor.huf": "1023",
+        "contractor.other": "1024",
+        "technical": "1026",
+        "call_centre": "1026",
+        "film_royalty": "1026",
+        "professional": "1027",
+        "royalty": "1027",
+        "director": "1028"
+      },
+      "unit": "map",
+      "effectiveFrom": "2026-04-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/w/section-393-6",
+      "verified": false,
+      "note": "UNVERIFIED. Form 26Q section codes from return-preparation tables, not from the s.393 page. 1023 contractor individual or HUF, 1024 other contractors, 1026 technical fees and film royalty, 1027 professional fees, 1028 director fees. Serial 6(ii) (old 194M) has no code in those tables; this skill returns null for it. The source URL is the Act section and does not print these codes."
+    },
+    {
+      "id": "tds.1961.194c.label",
+      "value": {
+        "section": "194C",
+        "oldSection": "194C"
+      },
+      "unit": "label",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED against the bare Income-tax Act, 1961, as it stood on this date. The 2025 Act is in force from 1 Apr 2026. The numbers below are the rates the 2025 Act carries, used here only as the pre-commencement labels the skill was asked to show."
+    },
+    {
+      "id": "tds.1961.194c.rate.individualBp",
+      "value": 100,
+      "unit": "bp",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. 1% for an individual or HUF contractor. Same figure as s.393(1) serial 6(i)."
+    },
+    {
+      "id": "tds.1961.194c.rate.otherBp",
+      "value": 200,
+      "unit": "bp",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. 2% for any other contractor."
+    },
+    {
+      "id": "tds.1961.194c.threshold.singleMinor",
+      "value": 3000000,
+      "unit": "minor",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. ₹30,000 for one sum, in paise. Exceeds, not equals."
+    },
+    {
+      "id": "tds.1961.194c.threshold.aggregateMinor",
+      "value": 10000000,
+      "unit": "minor",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. ₹1,00,000 aggregate, in paise."
+    },
+    {
+      "id": "tds.1961.194m.label",
+      "value": {
+        "section": "194M",
+        "oldSection": "194M"
+      },
+      "unit": "label",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. Individual or HUF payer not required to deduct under s.194C or s.194J."
+    },
+    {
+      "id": "tds.1961.194m.rateBp",
+      "value": 200,
+      "unit": "bp",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. 2%. The bare 1961 text on 31 Mar 2026 was not opened. Do not treat this as confirmed."
+    },
+    {
+      "id": "tds.1961.194m.threshold.aggregateMinor",
+      "value": 500000000,
+      "unit": "minor",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. Fifty lakh rupees, in paise."
+    },
+    {
+      "id": "tds.1961.194m.categories",
+      "value": ["contractor", "professional"],
+      "unit": "list",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. Same coverage choice as serial 6(ii): contract work and professional fees."
+    },
+    {
+      "id": "tds.1961.194j.label",
+      "value": {
+        "section": "194J",
+        "oldSection": "194J"
+      },
+      "unit": "label",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. Professional and technical fees and director remuneration."
+    },
+    {
+      "id": "tds.1961.194j.rate.professionalBp",
+      "value": 1000,
+      "unit": "bp",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. 10%."
+    },
+    {
+      "id": "tds.1961.194j.rate.technicalBp",
+      "value": 200,
+      "unit": "bp",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. 2% for technical services, call centres, and cinematographic-film royalty."
+    },
+    {
+      "id": "tds.1961.194j.technicalCategories",
+      "value": ["technical", "call_centre", "film_royalty"],
+      "unit": "list",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. Category names for the 2% row."
+    },
+    {
+      "id": "tds.1961.194j.threshold.aggregateMinor",
+      "value": 5000000,
+      "unit": "minor",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. ₹50,000 aggregate, in paise. This skill does not apply the older ₹30,000 threshold. Dates before 2025-04-01 are rejected."
+    },
+    {
+      "id": "tds.1961.194j.threshold.directorMinor",
+      "value": 0,
+      "unit": "minor",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. No threshold for director remuneration."
+    },
+    {
+      "id": "tds.1961.206aa.rateBp",
+      "value": 2000,
+      "unit": "bp",
+      "effectiveFrom": "2025-04-01",
+      "effectiveTo": "2026-03-31",
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED 1961 path. s.206AA: higher of the section rate, the rate in force, and 20%. The 5% cases are not these rows."
+    }
+  ]
 }

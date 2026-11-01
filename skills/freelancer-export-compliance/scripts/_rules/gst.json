@@ -1,0 +1,528 @@
+{
+  "schema": 1,
+  "domain": "gst",
+  "asOf": "2026-11-01",
+  "rules": [
+    {
+      "id": "gst.stateCodes",
+      "value": [
+        {
+          "code": "01",
+          "name": "Jammu and Kashmir",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "02",
+          "name": "Himachal Pradesh",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "03",
+          "name": "Punjab",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "04",
+          "name": "Chandigarh",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "05",
+          "name": "Uttarakhand",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "06",
+          "name": "Haryana",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "07",
+          "name": "Delhi",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "08",
+          "name": "Rajasthan",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "09",
+          "name": "Uttar Pradesh",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "10",
+          "name": "Bihar",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "11",
+          "name": "Sikkim",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "12",
+          "name": "Arunachal Pradesh",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "13",
+          "name": "Nagaland",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "14",
+          "name": "Manipur",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "15",
+          "name": "Mizoram",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "16",
+          "name": "Tripura",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "17",
+          "name": "Meghalaya",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "18",
+          "name": "Assam",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "19",
+          "name": "West Bengal",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "20",
+          "name": "Jharkhand",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "21",
+          "name": "Odisha",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "22",
+          "name": "Chhattisgarh",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "23",
+          "name": "Madhya Pradesh",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "24",
+          "name": "Gujarat",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "25",
+          "name": "Daman and Diu",
+          "legacy": true,
+          "gstinPrefix": true
+        },
+        {
+          "code": "26",
+          "name": "Dadra and Nagar Haveli",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "27",
+          "name": "Maharashtra",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "28",
+          "name": "Andhra Pradesh (undivided)",
+          "legacy": true,
+          "gstinPrefix": true
+        },
+        {
+          "code": "29",
+          "name": "Karnataka",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "30",
+          "name": "Goa",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "31",
+          "name": "Lakshadweep",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "32",
+          "name": "Kerala",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "33",
+          "name": "Tamil Nadu",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "34",
+          "name": "Puducherry",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "35",
+          "name": "Andaman and Nicobar",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "36",
+          "name": "Telangana",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "37",
+          "name": "Andhra Pradesh",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "38",
+          "name": "Ladakh",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "96",
+          "name": "Other Countries",
+          "legacy": false,
+          "gstinPrefix": false
+        },
+        {
+          "code": "97",
+          "name": "Other Territory",
+          "legacy": false,
+          "gstinPrefix": true
+        },
+        {
+          "code": "99",
+          "name": "Centre Jurisdiction",
+          "legacy": false,
+          "gstinPrefix": true
+        }
+      ],
+      "unit": "table",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice1.gst.gov.in/Others/MasterCodes",
+      "verified": true,
+      "note": "Names other than codes 28 and 99 follow the e-invoice MasterCodes table opened 2026-11-01. Code 26 is labelled Dadra and Nagar Haveli there. Code 28 is not in that table; SPEC §1.1 requires accepting undivided Andhra Pradesh with a legacy warning. Code 25 is in the table and takes the same warning. Code 96 is a place-of-supply code and is not a GSTIN prefix. That table labels 99 OTHER COUNTRIES, the same label it gives 96; this pack labels 99 Centre Jurisdiction because SPEC §1.1 defines 99 as centre jurisdiction / NRTP / OIDAR. e-way bill list: https://docs.ewaybillgst.gov.in/apidocs/state-code.html (cited by SPEC as checked 2026-11-01; the build environment received HTTP 403)."
+    },
+    {
+      "id": "gst.gstin.length",
+      "value": 15,
+      "unit": "chars",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.gst.gov.in/",
+      "verified": true,
+      "note": "A GSTIN is 15 characters."
+    },
+    {
+      "id": "gst.gstin.checksum",
+      "value": {
+        "alphabet": "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "radix": 36,
+        "oddWeight": 1,
+        "evenWeight": 2
+      },
+      "unit": "algorithm",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.gst.gov.in/",
+      "verified": true,
+      "note": "Odd and even positions are 1-based. For product p add floor(p/36)+p%36. Check character is alphabet[(36 - sum%36) % 36]. Verified in code on 2026-11-01 against the public GSTINs in SPEC §1.1."
+    },
+    {
+      "id": "gst.gstin.entityAlphabet",
+      "value": "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      "unit": "alphabet",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.gst.gov.in/",
+      "verified": true,
+      "note": "13th character of a regular, TDS, or TCS GSTIN. 0 is not issued."
+    },
+    {
+      "id": "gst.gstin.marker.regular",
+      "value": "Z",
+      "unit": "char",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.gst.gov.in/",
+      "verified": true,
+      "note": "14th character of a regular GSTIN."
+    },
+    {
+      "id": "gst.gstin.marker.tds",
+      "value": "D",
+      "unit": "char",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.gst.gov.in/",
+      "verified": true,
+      "note": "14th character of a TDS deductor GSTIN. Not in the SPEC open UNVERIFIED list."
+    },
+    {
+      "id": "gst.gstin.marker.tcs",
+      "value": "C",
+      "unit": "char",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.cbic.gov.in/",
+      "verified": false,
+      "note": "14th character C is described as the TCS (e-commerce operator) marker in secondary write-ups only. UNVERIFIED: no primary source was opened. Confirm with the official source before relying on this."
+    },
+    {
+      "id": "gst.gstin.nrtpPrefix",
+      "value": "99",
+      "unit": "code",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice1.gst.gov.in/Others/MasterCodes",
+      "verified": true,
+      "note": "NRTP / OIDAR GSTINs use state code 99."
+    },
+    {
+      "id": "gst.gstin.nrtpSuffix",
+      "value": "OS",
+      "unit": "chars",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.gst.gov.in/",
+      "verified": true,
+      "note": "13th and 14th characters of an NRTP/OIDAR GSTIN."
+    },
+    {
+      "id": "gst.gstin.uinPattern",
+      "value": "^[0-9]{4}[A-Z]{3}[0-9]{5}[0-9A-Z]{3}$",
+      "unit": "regex",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.cbic.gov.in/",
+      "verified": true,
+      "note": "UIN shape: state, year, three-letter code (country or UNO), five digits, then two characters that vary (UN, ON, OP, or another pair) and the check character. Do not force the 13th and 14th characters to one pair. Do not apply the PAN rule."
+    },
+    {
+      "id": "gst.gstin.registrationCaveat",
+      "value": "Checksum valid ≠ registered/active; check services.gst.gov.in/services/searchtp",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://services.gst.gov.in/services/searchtp",
+      "verified": true,
+      "note": "Shown whenever the check character matches."
+    },
+    {
+      "id": "gst.gstin.legacyWarning",
+      "value": "legacy state code",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice1.gst.gov.in/Others/MasterCodes",
+      "verified": true,
+      "note": "Exact warning for state codes 25 and 28."
+    },
+    {
+      "id": "gst.export.service.conditions",
+      "value": [
+        "the supplier of service is located in India",
+        "the recipient of service is located outside India",
+        "the place of supply of service is outside India",
+        "the payment for such service has been received by the supplier of service in convertible foreign exchange or in Indian rupees wherever permitted by the Reserve Bank of India",
+        "the supplier of service and the recipient of service are not merely establishments of a distinct person in accordance with Explanation 1 in section 8"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2019-02-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapteri/section2_v1.00.html",
+      "verified": true,
+      "note": "IGST Act s.2(6), all five limbs. Limb (iv) includes Indian rupees wherever permitted by the RBI. Text read 2026-11-01 from the CBIC repository. A direct fetch of the HTML timed out; the repository text returned by search is what was read. All five must hold. An LUT is not one of them."
+    },
+    {
+      "id": "gst.export.inrWarning",
+      "value": "check whether RBI permits; may fail s.2(6)(iv)",
+      "unit": "text",
+      "effectiveFrom": "2019-02-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapteri/section2_v1.00.html",
+      "verified": true,
+      "note": "Shown when the invoice currency is INR. Permission is a fact about the payment, not a rate."
+    },
+    {
+      "id": "gst.igst.placeOfSupply.general",
+      "value": "recipient",
+      "unit": "location",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapterv/section13_v1.00.html",
+      "verified": true,
+      "note": "IGST s.13(2): except the services in s.13(3) to s.13(13), place of supply is the location of the recipient. Repository text read 2026-11-01."
+    },
+    {
+      "id": "gst.igst.intermediary.warning",
+      "value": "intermediary services may not qualify",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapterv/section13_v1.00.html",
+      "verified": true,
+      "note": "Exact warning. Intermediary is IGST s.2(13): a broker, agent, or other person who arranges or facilitates a supply between two or more persons, and not a person who supplies on their own account."
+    },
+    {
+      "id": "gst.igst.intermediary.placeOfSupply",
+      "value": "supplier",
+      "unit": "location",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": "2026-03-29",
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapterv/section13_v1.00.html",
+      "verified": true,
+      "note": "IGST s.13(8)(b) before its omission: place of supply of intermediary services is the location of the supplier. If that location is in India, s.2(6)(iii) fails."
+    },
+    {
+      "id": "gst.igst.intermediary.omitted",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2026-03-30",
+      "effectiveTo": null,
+      "source": "https://egazette.gov.in/WriteReadData/2026/271439.pdf",
+      "verified": true,
+      "note": "Finance Act, 2026 (No. 4 of 2026), Gazette CG-DL-E-31032026-271439, assented 30 Mar 2026. Section 157 omits IGST s.13(8)(b). Section 1(2) brings sections 2 to 129, s.152(b), and s.156 into force on 1 Apr 2026, and ss.153 to 155 on a notified date. Section 157 is in neither list, so it takes effect on the assent date, 30 Mar 2026. From that date s.13(2) applies unless another s.13(3) to s.13(13) exception applies. The CBIC HTML for s.13 still showed clause (b) when it was read; the Gazette is the amending Act."
+    },
+    {
+      "id": "gst.igst.s13.otherExceptions",
+      "value": "Other IGST s.13(3) to s.13(13) rules can still put the place of supply in India, including services performed on goods or on a person who is present, services tied to immovable property or an event, banking and NBFC services to account holders, and hiring of a means of transport for up to one month.",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapterv/section13_v1.00.html",
+      "verified": true,
+      "note": "Shown with every checklist. The omission of s.13(8)(b) does not remove the other exceptions."
+    },
+    {
+      "id": "gst.zeroRated.options",
+      "value": [
+        "bond or letter of undertaking, without payment of integrated tax, with a refund of unutilised input tax credit",
+        "on payment of integrated tax, with a refund of the tax paid"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://gstcouncil.gov.in/sites/default/files/2024-03/annexure-5-igst-act%5F2017.pdf",
+      "verified": true,
+      "note": "IGST s.16(1) and s.16(3). Zero-rated supplies are exports and supplies to an SEZ developer or SEZ unit. The PDF is the Council compilation read 2026-11-01. Later amendments have narrowed some refunds; the two routes are still the ones s.16(3) states in that text."
+    },
+    {
+      "id": "gst.lut.form",
+      "value": "GST RFD-11",
+      "unit": "form",
+      "effectiveFrom": "2017-10-04",
+      "effectiveTo": null,
+      "source": "https://tutorial.gst.gov.in/userguide/refund/Furnishing_of_Letter_of_Undertaking_for_Export_of_Goods_or_Services.htm",
+      "verified": true,
+      "note": "GST portal tutorial, read 2026-11-01. LUT is furnished in Form GST RFD-11 before the zero-rated supply. It is how a person supplies without paying IGST. It is not part of the definition of export."
+    },
+    {
+      "id": "gst.lut.tiedToInvoiceFy",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2017-10-04",
+      "effectiveTo": null,
+      "source": "https://tutorial.gst.gov.in/userguide/refund/Furnishing_of_Letter_of_Undertaking_for_Export_of_Goods_or_Services.htm",
+      "verified": true,
+      "note": "The tutorial says the taxpayer selects the financial year for which the LUT is filed. A LUT filed for one FY does not cover an invoice in the next FY. 31 Mar and 1 Apr are different financial years."
+    },
+    {
+      "id": "gst.rule96a.oneYear",
+      "value": 1,
+      "unit": "year",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter10/rule96a_v1.00.html",
+      "verified": true,
+      "note": "CGST Rule 96A(1)(b), text read 2026-11-01. One limb of the services period is one year from the invoice date."
+    },
+    {
+      "id": "gst.rule96a.useLaterOfFema",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter10/rule96a_v1.00.html",
+      "verified": true,
+      "note": "Rule 96A(1)(b): fifteen days after the expiry of one year, or the period allowed under FEMA including any RBI extension, whichever is later, from the invoice date. The receipt deadline used here is the later of the one-year date and the FEMA date. The exporter then has the further days in gst.rule96a.taxPaymentDays to pay IGST and interest if the proceeds were not received."
+    },
+    {
+      "id": "gst.rule96a.taxPaymentDays",
+      "value": 15,
+      "unit": "day",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter10/rule96a_v1.00.html",
+      "verified": true,
+      "note": "The bond or LUT binds the exporter to pay the tax and s.50 interest within fifteen days after the receipt period expires. This skill does not compute the interest."
+    },
+    {
+      "id": "gst.rule96a.appliesToSez",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter10/rule96a_v1.00.html",
+      "verified": true,
+      "note": "Rule 96A(6): sub-rule (1) applies mutatis mutandis to a zero-rated supply to an SEZ developer or SEZ unit without payment of integrated tax."
+    }
+  ]
+}

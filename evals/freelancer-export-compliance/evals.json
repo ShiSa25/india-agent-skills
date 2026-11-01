@@ -1,0 +1,112 @@
+{
+  "skill": "freelancer-export-compliance",
+  "evals": [
+    {
+      "id": "march-2026-clocks",
+      "prompt": "I invoiced a US client on 15 March 2026 in USD. I am in India, the client is outside India, place of supply is outside India, this is not my own branch, and I am not an intermediary. The dollars have been received. My LUT is for 2025-26. What is the financial year, and what are the GST and FEMA deadlines?",
+      "expect": {
+        "input": {
+          "invoiceDate": "2026-03-15",
+          "currency": "USD",
+          "clientCountry": "US",
+          "supplierInIndia": true,
+          "recipientOutsideIndia": true,
+          "placeOfSupplyOutsideIndia": true,
+          "ownBranch": false,
+          "intermediary": false,
+          "forexReceived": true,
+          "lutFiledFY": "2025-26"
+        },
+        "valid": true,
+        "isExport": true,
+        "fy": "2025-26",
+        "lutRequired": false,
+        "gstRealisationDeadline": "2027-03-15",
+        "femaMonths": 15,
+        "femaRealisationDeadline": "2027-06-15",
+        "rule96aReceiptDeadline": "2027-06-15",
+        "confirm": true
+      }
+    },
+    {
+      "id": "january-2026-fifteen-months",
+      "prompt": "Export invoice dated 10 January 2026, client in the US, paid in USD. When is the FEMA realisation deadline?",
+      "expect": {
+        "input": {
+          "invoiceDate": "2026-01-10",
+          "currency": "USD",
+          "clientCountry": "US",
+          "supplierInIndia": true,
+          "recipientOutsideIndia": true,
+          "placeOfSupplyOutsideIndia": true,
+          "ownBranch": false,
+          "intermediary": false,
+          "forexReceived": true
+        },
+        "femaMonths": 15,
+        "femaRealisationDeadline": "2027-04-10",
+        "gstRealisationDeadline": "2027-01-10",
+        "confirm": true
+      }
+    },
+    {
+      "id": "fy-boundary-lut",
+      "prompt": "My LUT was filed for 2025-26. Does it cover an export invoice dated 1 April 2026?",
+      "expect": {
+        "input": {
+          "invoiceDate": "2026-04-01",
+          "currency": "USD",
+          "clientCountry": "US",
+          "supplierInIndia": true,
+          "recipientOutsideIndia": true,
+          "placeOfSupplyOutsideIndia": true,
+          "ownBranch": false,
+          "intermediary": false,
+          "forexReceived": true,
+          "lutFiledFY": "2025-2026"
+        },
+        "fy": "2026-27",
+        "lutRequired": true,
+        "lutFiledFY": "2025-26"
+      }
+    },
+    {
+      "id": "inr-client",
+      "prompt": "The foreign client wants to pay the June 2026 invoice in INR. Does that still count as an export of services?",
+      "expect": {
+        "input": {
+          "invoiceDate": "2026-06-01",
+          "currency": "INR",
+          "clientCountry": "US",
+          "supplierInIndia": true,
+          "recipientOutsideIndia": true,
+          "placeOfSupplyOutsideIndia": true,
+          "ownBranch": false,
+          "intermediary": false
+        },
+        "isExport": false,
+        "valid": false
+      }
+    },
+    {
+      "id": "own-branch",
+      "prompt": "I am billing my own branch in Singapore. Is that an export of services?",
+      "expect": {
+        "input": {
+          "invoiceDate": "2026-06-01",
+          "currency": "USD",
+          "clientCountry": "SG",
+          "supplierInIndia": true,
+          "recipientOutsideIndia": true,
+          "placeOfSupplyOutsideIndia": true,
+          "ownBranch": true,
+          "intermediary": false,
+          "forexReceived": true
+        },
+        "isExport": false,
+        "valid": false,
+        "femaRealisationDeadline": null
+      }
+    }
+  ]
+}

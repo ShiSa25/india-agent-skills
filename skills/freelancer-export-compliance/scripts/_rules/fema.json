@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "domain": "fema",
+  "asOf": "2026-11-01",
+  "rules": [
+    {
+      "id": "fema.services.realisation.forex.nine",
+      "value": {
+        "months": 9,
+        "currency": "forex",
+        "instrument": "FEMA 23(R)/2015-RB regulation 9"
+      },
+      "unit": "schedule",
+      "effectiveFrom": "2016-01-12",
+      "effectiveTo": "2025-11-13",
+      "source": "https://www.rbi.org.in/Scripts/BS_FemaNotifications.aspx?Id=12923",
+      "verified": true,
+      "note": "Notification FEMA 23(R)/(7)/2025-RB dated 13 Nov 2025 substitutes the words nine months in regulation 9. That is the period before the substitution. For services this skill starts the clock on the invoice date; see fema.services.clock.invoiceDate."
+    },
+    {
+      "id": "fema.services.realisation.forex.fifteen",
+      "value": {
+        "months": 15,
+        "currency": "forex",
+        "instrument": "FEMA 23(R)/(7)/2025-RB"
+      },
+      "unit": "schedule",
+      "effectiveFrom": "2025-11-14",
+      "effectiveTo": "2026-09-30",
+      "source": "https://www.rbi.org.in/Scripts/BS_FemaNotifications.aspx?Id=12923",
+      "verified": true,
+      "note": "Foreign Exchange Management (Export of Goods and Services) (Second Amendment) Regulations, 2025. Regulation 9: nine months becomes fifteen months, from the date of publication in the Official Gazette. Press release https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=61626 is dated 14 Nov 2025. Press release https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=62478 dated 31 Mar 2026 says the fifteen-month relaxation continues. The 2015 regulations are superseded from 1 Oct 2026 except for things already done, so an invoice on or before 30 Sep 2026 keeps this period."
+    },
+    {
+      "id": "fema.services.realisation.forex.nine2026",
+      "value": {
+        "months": 9,
+        "currency": "forex",
+        "instrument": "FEMA 23(R)/(1)/2026-RB"
+      },
+      "unit": "schedule",
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=13277",
+      "verified": true,
+      "note": "FEMA (Export and Import of Goods and Services) Regulations, 2026, Notification FEMA 23(R)/2026-RB dated 13 Jan 2026, in force 1 Oct 2026. Regulation 5(1)(a) as amended by FEMA 23(R)/(1)/2026-RB dated 22 Sep 2026 (Gazette 24 Sep 2026): nine months from the date of invoice for services. The footnote says the words nine months replaced fifteen months. This is not a 5 Jun 2026 notification numbered FEMA 23(R)/(8)/2026-RB. No such instrument was on the RBI page that was opened."
+    },
+    {
+      "id": "fema.services.realisation.inr.twelve",
+      "value": {
+        "months": 12,
+        "currency": "INR",
+        "instrument": "FEMA 23(R)/2026-RB regulation 5 proviso"
+      },
+      "unit": "schedule",
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=13277",
+      "verified": true,
+      "note": "Where the export is invoiced or settled in Indian rupees, regulation 5 gives twelve months from the invoice date for services. The same 22 Sep 2026 amendment replaced eighteen months with twelve months before the regulations commenced, so eighteen months never came into force under this instrument. GST s.2(6)(iv) still needs RBI permission for the rupee payment. That permission is separate from this clock."
+    },
+    {
+      "id": "fema.services.clock.invoiceDate",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2016-01-12",
+      "effectiveTo": "2026-09-30",
+      "source": "https://www.rbi.org.in/Scripts/BS_FemaNotifications.aspx?Id=12923",
+      "verified": false,
+      "note": "UNVERIFIED for services that are not software. Regulation 9 of the 2015 regulations runs from the date of export. The invoice-date explanation on the consolidated text is written for software in a form other than physical. This skill still starts the clock on the invoice date. Confirm the date of export with the authorised dealer."
+    },
+    {
+      "id": "fema.services.clock.invoiceDate.2026",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=13277",
+      "verified": true,
+      "note": "Regulation 5(1)(a) and the rupee proviso: services are measured from the date of invoice."
+    },
+    {
+      "id": "fema.services.gazetteDay.uncertain",
+      "value": {
+        "from": "2025-11-13",
+        "to": "2025-11-14",
+        "months": [9, 15]
+      },
+      "unit": "window",
+      "effectiveFrom": "2025-11-13",
+      "effectiveTo": "2025-11-14",
+      "source": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=61626",
+      "verified": false,
+      "note": "UNVERIFIED exact gazette day. The amendment is dated 13 Nov 2025 and commences on Official Gazette publication. The press release is dated 14 Nov 2025. On these two invoice dates the skill shows both the 9-month and the 15-month deadlines."
+    },
+    {
+      "id": "fema.proof.fira",
+      "value": "Keep the bank's foreign inward remittance advice (FIRA), or the earlier FIRC, or the bank advice that shows the inward remittance.",
+      "unit": "text",
+      "effectiveFrom": "2016-01-12",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=13277",
+      "verified": false,
+      "note": "UNVERIFIED as a document title. Regulation 18 of the 2026 regulations tells the authorised dealer to mark off EDPMS when the export value is realised. It does not name FIRA or FIRC. Banks issue those advices. Keep whichever advice the bank gives."
+    },
+    {
+      "id": "fema.proof.ebrc",
+      "value": "e-BRC on the DGFT portal is for exporters who need it for a foreign-trade scheme. For a services exporter it is optional, or required only when a scheme asks for it.",
+      "unit": "text",
+      "effectiveFrom": "2016-01-12",
+      "effectiveTo": null,
+      "source": "https://www.dgft.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED. No DGFT public notice was opened that makes e-BRC compulsory for every services exporter. Do not treat a missing e-BRC as proof that the FEMA clock was missed. FIRA or the bank advice is the realisation record for the authorised dealer."
+    }
+  ]
+}
