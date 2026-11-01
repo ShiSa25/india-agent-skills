@@ -1,0 +1,271 @@
+{
+  "schema": 1,
+  "domain": "upi",
+  "asOf": "2026-11-01",
+  "rules": [
+    {
+      "id": "upi.param.order",
+      "value": ["pa", "pn", "mc", "tid", "tr", "tn", "am", "mam", "cu", "url", "mode", "mid", "msid", "mtid"],
+      "unit": "name",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "Order follows the UPI Linking Specifications v1.6 (November 2017) parameter table. sign and orgid are omitted: this skill does not sign."
+    },
+    {
+      "id": "upi.param.required",
+      "value": ["pa", "pn"],
+      "unit": "name",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "pa and pn are mandatory for both static and dynamic links in v1.6."
+    },
+    {
+      "id": "upi.currency.only",
+      "value": "INR",
+      "unit": "code",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "v1.6: currency code. Currently ONLY INR is supported."
+    },
+    {
+      "id": "upi.mode.codes",
+      "value": {
+        "00": "default",
+        "01": "qr",
+        "02": "secure-qr",
+        "04": "intent",
+        "05": "secure-intent",
+        "06": "nfc",
+        "07": "ble",
+        "08": "uhf",
+        "15": "sebi",
+        "16": "future",
+        "17": "future",
+        "18": "future"
+      },
+      "unit": "code",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "v1.6 marks mode mandatory (2 digits). 00 is Default txn. 03 and 09-14 are not listed. 16, 17 and 18 are future use. When mode is omitted on build, 00 is written."
+    },
+    {
+      "id": "upi.mcc.person",
+      "value": "0000",
+      "unit": "mcc",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "The v1.6 customer-initiated sample uses mc=0000 for a person. Any other mc is treated as a merchant, so tr is required."
+    },
+    {
+      "id": "upi.mc.pattern",
+      "value": "^[0-9]{4}$",
+      "unit": "regex",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": false,
+      "note": "UNVERIFIED as a grammar. v1.6 says to pass mc as it is. The samples are 4 digits (0000, 9999). This skill accepts 4 digits."
+    },
+    {
+      "id": "upi.tr.requiredWhen",
+      "value": "merchant-or-dynamic",
+      "unit": "condition",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "tr is optional on a static tag and conditional on a dynamic tag. v1.6: mandatory for merchant transactions and dynamic URL generation. am is mandatory in the dynamic column. If am is absent, the amount is editable."
+    },
+    {
+      "id": "upi.url.schemes",
+      "value": ["http", "https"],
+      "unit": "scheme",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "v1.6: url, when used, must begin with http or https and must relate to that transaction."
+    },
+    {
+      "id": "upi.param.maxLength",
+      "value": { "mid": 20, "msid": 20, "mtid": 20 },
+      "unit": "chars",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "v1.6: merchant id, store id and terminal id are max 20."
+    },
+    {
+      "id": "upi.encoding.space",
+      "value": "%20",
+      "unit": "token",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "v1.6: space is %20 per RFC 3986, not a bare plus. Values are encodeURIComponent encoded, which yields %20. NPCI samples leave @ unencoded; encodeURIComponent writes %40. The parser accepts both."
+    },
+    {
+      "id": "upi.unsigned.notice",
+      "value": "Unsigned links are for P2P or personal use. Merchants should use their PSP or payment gateway. A link or QR is not proof of payment; reconcile from the bank statement or the payment-gateway webhook.",
+      "unit": "text",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": true,
+      "note": "v1.6 makes sign mandatory. If sign is absent the payer app warns that the source could not be verified. sign and orgid (000000 for a merchant-created intent) are out of scope."
+    },
+    {
+      "id": "upi.vpa.pattern",
+      "value": "^[a-zA-Z0-9.\\-_]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$",
+      "unit": "regex",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": false,
+      "note": "UNVERIFIED heuristic. v1.6 does not publish a VPA grammar. The source URL is the linking spec, which names pa as the payee VPA and does not give this expression."
+    },
+    {
+      "id": "upi.amount.maxDecimals",
+      "value": 2,
+      "unit": "digits",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": false,
+      "note": "UNVERIFIED. v1.6 says the amount is a decimal and does not cap the fraction at 2 digits. Enforced as a safe default."
+    },
+    {
+      "id": "upi.amount.positive",
+      "value": true,
+      "unit": "boolean",
+      "effectiveFrom": "2017-11-01",
+      "effectiveTo": null,
+      "source": "https://www.labnol.org/files/linking.pdf",
+      "verified": false,
+      "note": "UNVERIFIED. v1.6 does not say the amount must be greater than zero. Zero and negative amounts are rejected as a safe default."
+    },
+    {
+      "id": "upi.p2p.perTransaction",
+      "value": 10000000,
+      "unit": "paise",
+      "effectiveFrom": "2025-04-09",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=60178",
+      "verified": true,
+      "note": "RBI 9 Apr 2025: P2P UPI stays capped at ₹1 lakh. That statement is a per-transaction cap. SPEC §1.8 called it per day. OC 185B says the P2P per-transaction limit continues and does not restate the figure. A link cannot show the rest of the day. Warn above the cap. Do not refuse the link."
+    },
+    {
+      "id": "upi.p2m.default.perTransaction",
+      "value": 10000000,
+      "unit": "paise",
+      "effectiveFrom": "2025-04-09",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=60178",
+      "verified": true,
+      "note": "RBI 9 Apr 2025: the UPI transaction amount for P2P and P2M is capped at ₹1 lakh except specific P2M use cases. Used when mc is not in the OC 185B category table."
+    },
+    {
+      "id": "upi.limits.bankDiscretion",
+      "value": "Banks and UPI apps may set a lower limit than the published ceiling.",
+      "unit": "text",
+      "effectiveFrom": "2025-04-09",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=60178",
+      "verified": true,
+      "note": "RBI 9 Apr 2025 and NPCI OC 185B: banks may set internal limits within the announced ceilings."
+    },
+    {
+      "id": "upi.p2m.categories",
+      "value": [
+        {
+          "name": "Capital market",
+          "mcc": ["6211", "5960"],
+          "perTransactionPaise": 50000000,
+          "perDayPaise": 100000000,
+          "purpose": null
+        },
+        {
+          "name": "Insurance",
+          "mcc": ["6300", "6529"],
+          "perTransactionPaise": 50000000,
+          "perDayPaise": 100000000,
+          "purpose": null
+        },
+        {
+          "name": "Government e-Marketplace (EMD)",
+          "mcc": ["9311"],
+          "perTransactionPaise": 50000000,
+          "perDayPaise": 100000000,
+          "purpose": null
+        },
+        {
+          "name": "Travel",
+          "mcc": ["4722"],
+          "perTransactionPaise": 50000000,
+          "perDayPaise": 100000000,
+          "purpose": null
+        },
+        {
+          "name": "Credit-card bill payments",
+          "mcc": ["5413"],
+          "perTransactionPaise": 50000000,
+          "perDayPaise": 60000000,
+          "purpose": null
+        },
+        {
+          "name": "Collections",
+          "mcc": ["7322"],
+          "perTransactionPaise": 50000000,
+          "perDayPaise": 100000000,
+          "purpose": null
+        },
+        {
+          "name": "Jewellery",
+          "mcc": ["5944"],
+          "perTransactionPaise": 20000000,
+          "perDayPaise": 60000000,
+          "purpose": null
+        },
+        {
+          "name": "FX retail via BBPS",
+          "mcc": ["6012"],
+          "perTransactionPaise": 50000000,
+          "perDayPaise": 50000000,
+          "purpose": "BF"
+        },
+        {
+          "name": "Digital account opening for term deposits",
+          "mcc": ["7410"],
+          "perTransactionPaise": 50000000,
+          "perDayPaise": 50000000,
+          "purpose": "01"
+        },
+        {
+          "name": "Digital account opening, initial funding",
+          "mcc": ["7409"],
+          "perTransactionPaise": 20000000,
+          "perDayPaise": 20000000,
+          "purpose": null
+        }
+      ],
+      "unit": "paise",
+      "effectiveFrom": "2025-09-15",
+      "effectiveTo": null,
+      "source": "https://www.npci.org.in/uploads/UPI_OC_No185_B_FY_2025_26_Addendum_to_OC_185_A_Implementation_of_higher_per_transaction_limit_for_specific_categories_in_UPI_ba517a0902.pdf",
+      "verified": true,
+      "note": "NPCI/UPI/2025-26/OC/185B, 28 Aug 2025, comply by 15 Sep 2025. Verified merchants only. Rows with a purpose code also need that purpose; upi://pay v1.6 has no purpose parameter, so those MCCs are checked against the ₹1 lakh P2M default and the higher ceiling is only explained. Business or merchant payments (purpose 15 or 20, payer MCC not 0000) have no MCC in the link and stay on the default cap. Per-day figures are cumulative at the issuer; one link cannot see them. Warn above the per-transaction ceiling. Never refuse the link for amount."
+    }
+  ]
+}

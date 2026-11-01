@@ -1,0 +1,204 @@
+{
+  "schema": 1,
+  "domain": "trai",
+  "asOf": "2026-11-01",
+  "rules": [
+    {
+      "id": "trai.sms.template.registered",
+      "value": { "enforceFrom": "2019-02-28" },
+      "unit": "date",
+      "effectiveFrom": "2018-07-19",
+      "effectiveTo": null,
+      "source": "https://www.trai.gov.in/sites/default/files/2025-02/Regulation_12022025.pdf",
+      "verified": true,
+      "note": "TCCCPR 2018 requires commercial SMS to use registered headers and registered content templates on the DLT platform. The regulations were in force from 28 February 2019. A template that is explicitly unregistered is rejected by this linter from that date."
+    },
+    {
+      "id": "trai.sms.variable.token",
+      "value": "{#var#}",
+      "unit": "token",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://msg91.com/help/dlt-registration-in-india/dlt-content-template-faqs",
+      "verified": false,
+      "note": "UNVERIFIED against TRAI. Operator DLT portals use the placeholder {#var#}. TRAI direction of 18 November 2025 instead requires pre-tags such as #url# and #numeric#. This linter checks {#var#} and does not scrub those pre-tags."
+    },
+    {
+      "id": "trai.sms.variable.max-count",
+      "value": 2,
+      "unit": "count",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://msg91.com/help/dlt-registration-in-india/dlt-content-template-faqs",
+      "verified": false,
+      "note": "UNVERIFIED against TRAI. MSG91 says 1 or 2 variables. A TRAI direction of 12 May 2023, recalled in the 18 November 2025 direction, allowed more than three variables in special cases with pre-tags. Lint a count above 2 as a warning with source operator."
+    },
+    {
+      "id": "trai.sms.variable.max-chars",
+      "value": 30,
+      "unit": "chars",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://msg91.com/help/dlt-registration-in-india/dlt-content-template-faqs",
+      "verified": false,
+      "note": "UNVERIFIED against TRAI. SPEC and one MSG91 FAQ say 30 characters. Another MSG91 page says 40. A value longer than 30 is a warning, source operator. Confirm which operator portal applies."
+    },
+    {
+      "id": "trai.sms.variable.not-last",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://msg91.com/help/dlt-registration-in-india/dlt-content-template-faqs",
+      "verified": false,
+      "note": "UNVERIFIED against TRAI. MSG91 says a variable cannot be the last word of the content template. Warning, source operator."
+    },
+    {
+      "id": "trai.sms.brand.required",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://msg91.com/help/dlt-registration-in-india/dlt-content-template-faqs",
+      "verified": false,
+      "note": "UNVERIFIED against TRAI. MSG91 says the brand name is mandatory in the content template. This linter treats a missing brand name as an error and sets confirm."
+    },
+    {
+      "id": "trai.sms.url.whitelist",
+      "value": { "enforceFrom": "2024-10-01" },
+      "unit": "date",
+      "effectiveFrom": "2024-08-30",
+      "effectiveTo": null,
+      "source": "https://www.trai.gov.in/sites/default/files/2024-09/Direction_30082024_0.pdf",
+      "verified": true,
+      "note": "Direction of 30 August 2024: traffic containing URLs, APKs, or OTT links that are not whitelisted is not permitted from 1 October 2024. Press release 53/2024 had said 1 September 2024 and had included callback numbers. Press release 60/2024 deferred callback numbers."
+    },
+    {
+      "id": "trai.sms.callback.whitelist",
+      "value": { "enforceFrom": null },
+      "unit": "date",
+      "effectiveFrom": "2024-08-20",
+      "effectiveTo": null,
+      "source": "https://www.trai.gov.in/sites/default/files/2024-10/PR_No.60of2024.pdf",
+      "verified": false,
+      "note": "UNVERIFIED hard date. Press release 53/2024 included callback numbers from 1 September 2024. The 30 August 2024 direction said the callback timeline would be fixed separately. The 12 February 2025 amendment tells access providers to scrub callback numbers against whitelisted data, and the 18 November 2025 direction sets an implementation clock. This linter warns, and does not treat 1 October 2024 as a callback reject date."
+    },
+    {
+      "id": "trai.sms.chain.reject",
+      "value": { "enforceFrom": "2024-12-11" },
+      "unit": "date",
+      "effectiveFrom": "2018-07-19",
+      "effectiveTo": null,
+      "source": "https://www.trai.gov.in/sites/default/files/2024-12/PR_No.92of2024.pdf",
+      "verified": true,
+      "note": "From 11 December 2024, SMS whose PE-TM chain is not defined or does not match the registered chain is rejected. Direction of 30 November 2024 and press release 92/2024. Earlier deadlines of 1 November and 1 December 2024 were extended."
+    },
+    {
+      "id": "trai.sms.header.length",
+      "value": 11,
+      "unit": "chars",
+      "effectiveFrom": "2018-07-19",
+      "effectiveTo": null,
+      "source": "https://www.trai.gov.in/sites/default/files/2025-02/Regulation_12022025.pdf",
+      "verified": true,
+      "note": "Schedule I, as substituted by the Second Amendment Regulations, 2025: SMS header is an alphanumeric string of up to 11 characters. The suffix counts toward the 11."
+    },
+    {
+      "id": "trai.sms.header.suffix",
+      "value": {
+        "enforceFrom": "2025-04-13",
+        "promotional": "-P",
+        "service-implicit": "-S",
+        "service-explicit": "-S",
+        "transactional": "-T",
+        "government": "-G"
+      },
+      "unit": "suffix",
+      "effectiveFrom": "2018-07-19",
+      "effectiveTo": null,
+      "source": "https://www.trai.gov.in/sites/default/files/2025-02/Regulation_12022025.pdf",
+      "verified": true,
+      "note": "Regulation 17 of the Second Amendment Regulations, 2025 substitutes Schedule I. Suffix -P promotional, -S service, -T transactional, -G government. Regulation 17 comes into force sixty days after gazette publication. The notification is dated 12 February 2025, so this row uses 13 April 2025. Service implicit and service explicit are both service messages under the amended definitions."
+    },
+    {
+      "id": "trai.sms.category.transactional-minutes",
+      "value": { "minutes": 30, "enforceFrom": "2025-03-14" },
+      "unit": "minutes",
+      "effectiveFrom": "2018-07-19",
+      "effectiveTo": null,
+      "source": "https://www.trai.gov.in/sites/default/files/2025-02/Regulation_12022025.pdf",
+      "verified": true,
+      "note": "Amended definition of transactional message: a customer-initiated transaction, within thirty minutes, and not promotional. Later service information is a service message. The amendment comes into force thirty days after publication except provisions listed for sixty days. This row uses 14 March 2025 as a conservative enforce date in the linter only when minutesSinceTransaction is supplied."
+    },
+    {
+      "id": "trai.sms.promotional.hours",
+      "value": { "start": "10:00", "end": "21:00" },
+      "unit": "ist",
+      "effectiveFrom": "2018-07-19",
+      "effectiveTo": null,
+      "source": "https://www.trai.gov.in/sites/default/files/2026-05/CA_21052026.pdf",
+      "verified": false,
+      "note": "UNVERIFIED as an absolute ban. TRAI's consolidated TCCCPR text, Schedule II, says time bands 00:00-10:00 and 21:00-24:00 are default OFF unless the customer switches them on. The consolidation itself says the gazette prevails if they differ. A promotional send at or after 21:00 or before 10:00 IST is a warning, not a guaranteed block."
+    },
+    {
+      "id": "trai.sms.promotional.opt-out",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2018-07-19",
+      "effectiveTo": null,
+      "source": "https://www.trai.gov.in/sites/default/files/2025-02/Regulation_12022025.pdf",
+      "verified": true,
+      "note": "Amended definition of promotional message: the sender shall give an opt-out mechanism in the same message, as specified by TRAI. The linter only warns when no obvious opt-out words are present. It does not know the current specified keyword."
+    },
+    {
+      "id": "msg91.otp.url",
+      "value": "https://control.msg91.com/api/v5/otp",
+      "unit": "url",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://docs.msg91.com/otp/sendotp",
+      "verified": false,
+      "note": "UNVERIFIED against TRAI and MeitY. Official MSG91 SendOTP OpenAPI, opened 1 November 2026. POST this path. template_id and mobile are query parameters. authkey is a header. Do not put the authkey in the URL or in logs."
+    },
+    {
+      "id": "msg91.otp.length",
+      "value": { "min": 4, "max": 9, "default": 4, "practice": 6 },
+      "unit": "digits",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://docs.msg91.com/otp/sendotp",
+      "verified": false,
+      "note": "UNVERIFIED against TRAI. MSG91 otp_length is 4 to 9 and defaults to 4. This skill's practice, which is not a TRAI rule, is 6 digits from crypto.randomInt."
+    },
+    {
+      "id": "msg91.otp.expiry",
+      "value": { "min": 1, "max": 10080, "default": 15, "practiceMin": 5, "practiceMax": 10 },
+      "unit": "minutes",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://docs.msg91.com/otp/sendotp",
+      "verified": false,
+      "note": "UNVERIFIED against TRAI. MSG91 otp_expiry is in minutes, default 15, minimum 1, maximum 10080. Skill practice is 5 to 10 minutes."
+    },
+    {
+      "id": "msg91.otp.placeholder",
+      "value": "##OTP##",
+      "unit": "token",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://docs.msg91.com/otp/sendotp",
+      "verified": false,
+      "note": "UNVERIFIED against TRAI. The MSG91 OTP template must contain ##OTP##. That is not the DLT token {#var#}. Other template variables are JSON body keys Param1, Param2, and so on, and they are case sensitive."
+    },
+    {
+      "id": "otp.practice.attempt-limit",
+      "value": 5,
+      "unit": "attempts",
+      "effectiveFrom": "2020-01-01",
+      "effectiveTo": null,
+      "source": "https://docs.msg91.com/otp/sendotp",
+      "verified": false,
+      "note": "UNVERIFIED. No TRAI or MSG91 figure was opened for a maximum verify-attempt count. The review warns when the snippet shows no attempt limit. The number 5 is a local default, not a regulation."
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "skill": "gst-e-invoice-json",
+  "evals": [
+    {
+      "id": "b2b-schema",
+      "prompt": "Build schema 1.1 JSON for this B2B invoice. Do not call the IRP.",
+      "expect": {
+        "valid": true,
+        "confirm": false,
+        "version": "1.1",
+        "supTyp": "B2B",
+        "invoiceRequest": {
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29",
+            "pin": "560001",
+            "loc": "Bengaluru"
+          },
+          "recipient": {
+            "name": "Beta Buyers",
+            "address": "2 Sample Lane, Mumbai",
+            "gstin": "27AABCC1234A1ZH",
+            "stateCode": "27",
+            "pin": "400001",
+            "loc": "Mumbai"
+          },
+          "invoiceNumber": "INV/2026-27/0001",
+          "invoiceDate": "2026-04-15",
+          "placeOfSupply": "27",
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Consulting",
+              "hsn": "998313",
+              "quantity": "1",
+              "unit": "NOS",
+              "taxable": "42000.00",
+              "rateBp": 1800,
+              "service": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "expwop-must-be-urp",
+      "prompt": "Validate this export-without-payment e-invoice. The buyer GSTIN is 27AABCC1234A1ZH. Do not submit it.",
+      "expect": {
+        "command": "validate",
+        "valid": false,
+        "errorIncludes": "URP",
+        "set": { "BuyerDtls.Gstin": "27AABCC1234A1ZH" },
+        "invoiceRequest": {
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29",
+            "pin": "560001",
+            "loc": "Bengaluru"
+          },
+          "recipient": {
+            "name": "US Client",
+            "address": "1 Market Street",
+            "loc": "San Francisco",
+            "country": "United States",
+            "deliveryAddress": "1 Market Street, San Francisco"
+          },
+          "invoiceNumber": "EXP/2026-27/0001",
+          "invoiceDate": "2026-04-15",
+          "placeOfSupply": "96",
+          "supplyType": "export",
+          "supplyKind": "services",
+          "lut": true,
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Consulting",
+              "hsn": "998313",
+              "taxable": "1000.00",
+              "rateBp": 1800,
+              "service": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "date-format",
+      "prompt": "The e-invoice date is 2026-04-01. Is that the schema format?",
+      "expect": {
+        "command": "validate",
+        "valid": false,
+        "errorIncludes": "DD/MM/YYYY",
+        "set": { "DocDtls.Dt": "2026-04-01" },
+        "invoiceRequest": {
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29",
+            "pin": "560001",
+            "loc": "Bengaluru"
+          },
+          "recipient": {
+            "name": "Beta Buyers",
+            "address": "2 Sample Lane, Mumbai",
+            "gstin": "27AABCC1234A1ZH",
+            "stateCode": "27",
+            "pin": "400001",
+            "loc": "Mumbai"
+          },
+          "invoiceNumber": "INV/2026-27/0001",
+          "invoiceDate": "2026-04-15",
+          "placeOfSupply": "27",
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Consulting",
+              "hsn": "998313",
+              "quantity": "1",
+              "unit": "NOS",
+              "taxable": "100.00",
+              "rateBp": 1800,
+              "service": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "thirty-day-limit",
+      "prompt": "This credit note is 31 days old and our AATO is ₹12 crore. Can we still report it to the IRP?",
+      "expect": {
+        "valid": true,
+        "warningIncludes": "30-day IRP limit",
+        "meta": { "aato": "120000000.00", "asOf": "2026-05-02" },
+        "invoiceRequest": {
+          "documentType": "credit-note",
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29",
+            "pin": "560001",
+            "loc": "Bengaluru"
+          },
+          "recipient": {
+            "name": "Beta Buyers",
+            "address": "2 Sample Lane, Mumbai",
+            "gstin": "27AABCC1234A1ZH",
+            "stateCode": "27",
+            "pin": "400001",
+            "loc": "Mumbai"
+          },
+          "invoiceNumber": "CRN/2026-27/0002",
+          "invoiceDate": "2026-04-01",
+          "originalInvoiceNumber": "INV/2026-27/0001",
+          "originalInvoiceDate": "2026-03-15",
+          "placeOfSupply": "27",
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Return",
+              "hsn": "998313",
+              "quantity": "1",
+              "unit": "NOS",
+              "taxable": "-1000.00",
+              "rateBp": 1800,
+              "service": true
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

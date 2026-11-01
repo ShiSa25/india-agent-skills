@@ -1,0 +1,264 @@
+{
+  "skill": "gst-invoice",
+  "evals": [
+    {
+      "id": "inter-state-42000",
+      "prompt": "Create an inter-state tax invoice for ₹42,000 at 18%. Supplier in Karnataka, place of supply Maharashtra. Do not file it.",
+      "expect": {
+        "valid": true,
+        "confirm": false,
+        "igst": "7560.00",
+        "cgst": "0.00",
+        "fy": "2026-27",
+        "amountInWords": "Rupees Forty-Nine Thousand Five Hundred Sixty Only",
+        "input": {
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29",
+            "pin": "560001",
+            "loc": "Bengaluru"
+          },
+          "recipient": {
+            "name": "Beta Buyers",
+            "address": "2 Sample Lane, Mumbai",
+            "gstin": "27AABCC1234A1ZH",
+            "stateCode": "27",
+            "pin": "400001",
+            "loc": "Mumbai"
+          },
+          "invoiceNumber": "INV/2026-27/0001",
+          "invoiceDate": "2026-04-15",
+          "placeOfSupply": "27",
+          "supplyType": "domestic",
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Consulting",
+              "hsn": "998313",
+              "quantity": "1",
+              "unit": "NOS",
+              "taxable": "42000.00",
+              "rateBp": 1800,
+              "service": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "intra-state-42000",
+      "prompt": "Create an intra-state tax invoice for ₹42,000 at 18%.",
+      "expect": {
+        "valid": true,
+        "cgst": "3780.00",
+        "sgst": "3780.00",
+        "igst": "0.00",
+        "input": {
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29",
+            "pin": "560001",
+            "loc": "Bengaluru"
+          },
+          "recipient": {
+            "name": "Beta Buyers",
+            "address": "2 Sample Lane, Bengaluru",
+            "gstin": "29AABCC1234A2ZC",
+            "stateCode": "29",
+            "pin": "560001",
+            "loc": "Bengaluru"
+          },
+          "invoiceNumber": "INV/2026-27/0002",
+          "invoiceDate": "2026-04-15",
+          "placeOfSupply": "29",
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Consulting",
+              "hsn": "998313",
+              "quantity": "1",
+              "unit": "NOS",
+              "taxable": "42000.00",
+              "rateBp": 1800,
+              "service": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "invoice-number-17",
+      "prompt": "The invoice number is INV/2026-27/00001. Can I use it?",
+      "expect": {
+        "valid": false,
+        "errorIncludes": "longer than 16",
+        "input": {
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29"
+          },
+          "recipient": {
+            "name": "Beta Buyers",
+            "address": "2 Sample Lane, Mumbai",
+            "gstin": "27AABCC1234A1ZH",
+            "stateCode": "27"
+          },
+          "invoiceNumber": "INV/2026-27/00001",
+          "invoiceDate": "2026-04-15",
+          "placeOfSupply": "27",
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Consulting",
+              "hsn": "998313",
+              "quantity": "1",
+              "unit": "NOS",
+              "taxable": "100.00",
+              "rateBp": 1800,
+              "service": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "export-lut",
+      "prompt": "Export of services under LUT. Put the endorsement on the invoice and do not charge IGST.",
+      "expect": {
+        "valid": true,
+        "igst": "0.00",
+        "endorsement": "SUPPLY MEANT FOR EXPORT/SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX",
+        "input": {
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29",
+            "pin": "560001",
+            "loc": "Bengaluru"
+          },
+          "recipient": {
+            "name": "US Client",
+            "address": "1 Market Street",
+            "loc": "San Francisco",
+            "country": "United States",
+            "deliveryAddress": "1 Market Street, San Francisco"
+          },
+          "invoiceNumber": "EXP/2026-27/0001",
+          "invoiceDate": "2026-03-15",
+          "placeOfSupply": "96",
+          "supplyType": "export",
+          "supplyKind": "services",
+          "lut": true,
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Consulting",
+              "hsn": "998313",
+              "taxable": "100000.00",
+              "rateBp": 1800,
+              "service": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "sez-same-state",
+      "prompt": "The SEZ unit is in my state. Is this IGST or CGST and SGST?",
+      "expect": {
+        "valid": true,
+        "igst": "7560.00",
+        "cgst": "0.00",
+        "input": {
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29"
+          },
+          "recipient": {
+            "name": "SEZ Unit",
+            "address": "2 SEZ Road, Bengaluru",
+            "gstin": "29AABCC1234A2ZC",
+            "stateCode": "29"
+          },
+          "invoiceNumber": "SEZ/2026-27/0001",
+          "invoiceDate": "2026-04-15",
+          "placeOfSupply": "29",
+          "supplyType": "sez",
+          "lut": false,
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Goods",
+              "hsn": "8471",
+              "quantity": "1",
+              "unit": "NOS",
+              "taxable": "42000.00",
+              "rateBp": 1800
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "credit-note",
+      "prompt": "Credit note for ₹1,000 at 18% against invoice INV/2026-27/0001.",
+      "expect": {
+        "valid": true,
+        "igst": "-180.00",
+        "input": {
+          "supplier": {
+            "name": "Acme Supplies",
+            "address": "1 Test Road, Bengaluru",
+            "gstin": "29AABCC1234A1ZD",
+            "stateCode": "29"
+          },
+          "recipient": {
+            "name": "Beta Buyers",
+            "address": "2 Sample Lane, Mumbai",
+            "gstin": "27AABCC1234A1ZH",
+            "stateCode": "27"
+          },
+          "documentType": "credit-note",
+          "invoiceNumber": "CRN/2026-27/0001",
+          "invoiceDate": "2026-04-20",
+          "originalInvoiceNumber": "INV/2026-27/0001",
+          "originalInvoiceDate": "2026-04-15",
+          "placeOfSupply": "27",
+          "reverseCharge": false,
+          "signature": "Authorised signatory",
+          "priorNumbers": [],
+          "lines": [
+            {
+              "description": "Return",
+              "hsn": "998313",
+              "quantity": "1",
+              "unit": "NOS",
+              "taxable": "-1000.00",
+              "rateBp": 1800,
+              "service": true
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

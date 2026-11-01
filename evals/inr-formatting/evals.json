@@ -1,0 +1,68 @@
+{
+  "skill": "inr-formatting",
+  "evals": [
+    {
+      "id": "zero",
+      "prompt": "Format zero rupees in Indian grouping and in words.",
+      "expect": {
+        "rupees": "0",
+        "valid": true,
+        "formatted": "₹0.00",
+        "words": "Rupees Zero Only",
+        "confirm": false
+      }
+    },
+    {
+      "id": "one-lakh",
+      "prompt": "Format 100000 rupees with Indian commas and say it in words.",
+      "expect": {
+        "rupees": "100000",
+        "valid": true,
+        "formatted": "₹1,00,000.00",
+        "words": "Rupees One Lakh Only",
+        "compact": "1 L"
+      }
+    },
+    {
+      "id": "crore-and-paise",
+      "prompt": "Write 123456789.50 rupees in words the Indian way, including paise.",
+      "expect": {
+        "rupees": "123456789.50",
+        "valid": true,
+        "words": "Rupees Twelve Crore Thirty-Four Lakh Fifty-Six Thousand Seven Hundred Eighty-Nine and Fifty Paise Only",
+        "formatted": "₹12,34,56,789.50"
+      }
+    },
+    {
+      "id": "negative-paise",
+      "prompt": "Format minus fifty paise.",
+      "expect": {
+        "rupees": "-0.50",
+        "valid": true,
+        "formatted": "-₹0.50",
+        "words": "Minus Rupees Zero and Fifty Paise Only"
+      }
+    },
+    {
+      "id": "exponent",
+      "prompt": "Format 1e5 rupees.",
+      "expect": {
+        "rupees": "1e5",
+        "valid": false,
+        "errorIncludes": "exponent"
+      }
+    },
+    {
+      "id": "bigint-paise",
+      "prompt": "Format 12345678901234567890 paise in Indian grouping and in words.",
+      "expect": {
+        "paise": "12345678901234567890",
+        "valid": true,
+        "formatted": "₹1,23,45,67,89,01,23,45,678.90",
+        "compact": "1,234.57 Cr Cr",
+        "words": "Rupees One Thousand Two Hundred Thirty-Four Crore Fifty-Six Lakh Seventy-Eight Thousand Nine Hundred One Crore Twenty-Three Lakh Forty-Five Thousand Six Hundred Seventy-Eight and Ninety Paise Only",
+        "confirm": true
+      }
+    }
+  ]
+}
