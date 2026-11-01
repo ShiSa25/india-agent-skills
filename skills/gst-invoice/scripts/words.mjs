@@ -2,7 +2,8 @@
  * Amount in words for an INR minor-unit bigint.
  * Indian grouping: Thousand, Lakh, Crore. Above 99 crore the same scale
  * continues ("Hundred Crore", "Thousand Crore"). There is no "Arab".
- * inr-formatting is not in this repo, so the invoice skill carries this helper.
+ * This skill keeps the helper in its own folder. Installers copy one skill
+ * directory, so the script does not import inr-formatting.
  */
 
 const ONES = [

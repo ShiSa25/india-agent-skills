@@ -8,10 +8,24 @@
   "plugins": [
     {
       "name": "india-agent-skills",
-      "description": "GST, payments, IDs, and compliance skills for Indian developers. Only gstin-validator is included until the other skills land.",
+      "description": "v0.1.0. Thirteen skills for Indian GST, payments, IDs, and compliance. Descriptions are the SKILL.md frontmatter in each folder. Tax and legal output is an aid: confirm it with the official source or a professional.",
       "source": "./",
       "strict": false,
-      "skills": ["./skills/gstin-validator"]
+      "skills": [
+        "./skills/gstin-validator",
+        "./skills/gst-invoice",
+        "./skills/gst-e-invoice-json",
+        "./skills/freelancer-export-compliance",
+        "./skills/tds-freelancer-payments",
+        "./skills/razorpay-integration",
+        "./skills/cashfree-integration",
+        "./skills/upi-payment-links",
+        "./skills/inr-formatting",
+        "./skills/indian-id-validators",
+        "./skills/aadhaar-safe-handling",
+        "./skills/dpdp-compliance-check",
+        "./skills/sms-otp-dlt"
+      ]
     }
   ]
 }
