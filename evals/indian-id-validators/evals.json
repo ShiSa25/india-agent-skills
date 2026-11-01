@@ -1,0 +1,116 @@
+{
+  "skill": "indian-id-validators",
+  "evals": [
+    {
+      "id": "pan-individual",
+      "prompt": "Is ABCPE1234F a valid PAN, and what kind of holder is it?",
+      "expect": {
+        "tool": "pan",
+        "input": "ABCPE1234F",
+        "valid": true,
+        "normalized": "ABCPE1234F",
+        "holderType": "P",
+        "holderName": "Individual",
+        "nameInitial": "E",
+        "checkDigitChecked": false,
+        "confirm": false
+      }
+    },
+    {
+      "id": "pan-bad-holder",
+      "prompt": "Can I use ABCDE1234F as a PAN in a test fixture?",
+      "expect": {
+        "tool": "pan",
+        "input": "ABCDE1234F",
+        "valid": false,
+        "holderType": "D",
+        "errorIncludes": "Holder type D"
+      }
+    },
+    {
+      "id": "ifsc-format",
+      "prompt": "Check this IFSC and do not look it up online: SBIN0001234",
+      "expect": {
+        "tool": "ifsc",
+        "input": "SBIN0001234",
+        "valid": true,
+        "bankCode": "SBIN",
+        "branchCode": "001234",
+        "lookedUp": false,
+        "confirm": false,
+        "warningIncludes": "does not mean the branch participates"
+      }
+    },
+    {
+      "id": "ifsc-fifth-char",
+      "prompt": "Is SBIN1001234 a valid IFSC?",
+      "expect": {
+        "tool": "ifsc",
+        "input": "SBIN1001234",
+        "valid": false,
+        "errorIncludes": "5th character"
+      }
+    },
+    {
+      "id": "pin-leading-zero",
+      "prompt": "Is 011001 a valid PIN code?",
+      "expect": {
+        "tool": "pin",
+        "input": "011001",
+        "valid": false,
+        "errorIncludes": "first digit cannot be 0"
+      }
+    },
+    {
+      "id": "pin-shared-prefix",
+      "prompt": "The PIN is 396210 and the state code on the invoice is 24. Does that match?",
+      "expect": {
+        "tool": "pin",
+        "input": "396210",
+        "stateCode": "24",
+        "valid": true,
+        "stateMatch": "shared",
+        "confirm": true,
+        "warningIncludes": "shared by"
+      }
+    },
+    {
+      "id": "mobile-prefix",
+      "prompt": "Normalise this Indian mobile number: +91 98765-43210",
+      "expect": {
+        "tool": "mobile",
+        "input": "+91 98765-43210",
+        "valid": true,
+        "normalized": "9876543210",
+        "e164": "+919876543210",
+        "confirm": true,
+        "warningIncludes": "UNVERIFIED"
+      }
+    },
+    {
+      "id": "mobile-starts-with-5",
+      "prompt": "Is 5876543210 an Indian mobile number?",
+      "expect": {
+        "tool": "mobile",
+        "input": "5876543210",
+        "valid": false,
+        "confirm": true,
+        "errorIncludes": "Not a mobile number"
+      }
+    },
+    {
+      "id": "tan-shape",
+      "prompt": "Check the synthetic TAN AAAA00000A.",
+      "expect": {
+        "tool": "tan",
+        "input": "AAAA00000A",
+        "valid": true,
+        "jurisdiction": "AAA",
+        "nameInitial": "A",
+        "serial": "00000",
+        "checkDigitChecked": false,
+        "confirm": false
+      }
+    }
+  ]
+}
