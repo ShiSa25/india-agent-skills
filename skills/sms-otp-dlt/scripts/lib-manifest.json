@@ -1,0 +1,4 @@
+{
+  "lib": ["disclaimer.mjs", "fy.mjs", "rules.mjs"],
+  "rules": ["trai.json"]
+}
