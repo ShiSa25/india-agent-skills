@@ -1,0 +1,114 @@
+{
+  "skill": "cashfree-integration",
+  "evals": [
+    {
+      "id": "webhook-ok",
+      "prompt": "Verify this Cashfree webhook. Timestamp 1617695238078, body {\"type\":\"PAYMENT_SUCCESS_WEBHOOK\"}, secret client_secret, signature qYpxv9z56awnigrZ4WIKtxozJ3UJqAaqk4BuDtqCcWU=.",
+      "expect": {
+        "op": "webhook",
+        "input": {
+          "rawBody": "{\"type\":\"PAYMENT_SUCCESS_WEBHOOK\"}",
+          "timestamp": "1617695238078",
+          "signature": "qYpxv9z56awnigrZ4WIKtxozJ3UJqAaqk4BuDtqCcWU=",
+          "secret": "client_secret",
+          "nowMs": 1617695238078
+        },
+        "valid": true,
+        "reason": "ok",
+        "timestampUnit": "ms",
+        "confirm": true,
+        "warningIncludes": "Confirm with the official source before relying on this."
+      }
+    },
+    {
+      "id": "tampered-body",
+      "prompt": "The Cashfree body gained a trailing space. Is the signature still good?",
+      "expect": {
+        "op": "webhook",
+        "input": {
+          "rawBody": "{\"type\":\"PAYMENT_SUCCESS_WEBHOOK\"} ",
+          "timestamp": "1617695238078",
+          "signature": "qYpxv9z56awnigrZ4WIKtxozJ3UJqAaqk4BuDtqCcWU=",
+          "secret": "client_secret",
+          "nowMs": 1617695238078
+        },
+        "valid": false,
+        "reason": "tampered"
+      }
+    },
+    {
+      "id": "stale-301",
+      "prompt": "This Cashfree webhook is 301 seconds old. Should I accept it?",
+      "expect": {
+        "op": "webhook",
+        "input": {
+          "rawBody": "{\"type\":\"PAYMENT_SUCCESS_WEBHOOK\"}",
+          "timestamp": "1617695238078",
+          "signature": "qYpxv9z56awnigrZ4WIKtxozJ3UJqAaqk4BuDtqCcWU=",
+          "secret": "client_secret",
+          "nowMs": 1617695539078
+        },
+        "valid": false,
+        "reason": "stale"
+      }
+    },
+    {
+      "id": "hex-digest",
+      "prompt": "The Cashfree header looks like a hex HMAC, not base64. What do I do?",
+      "expect": {
+        "op": "webhook",
+        "input": {
+          "rawBody": "{\"type\":\"PAYMENT_SUCCESS_WEBHOOK\"}",
+          "timestamp": "1617695238078",
+          "signature": "a98a71bfdcf9e9ac278a0ad9e1620ab71a33277509a806aa93806e0eda827165",
+          "secret": "client_secret",
+          "nowMs": 1617695238078
+        },
+        "valid": false,
+        "reason": "expected base64"
+      }
+    },
+    {
+      "id": "success-fulfils",
+      "prompt": "Cashfree webhook version 2025-01-01 says payment_status SUCCESS. The idempotency key is new. Do I fulfil?",
+      "expect": {
+        "op": "event",
+        "input": {
+          "signatureVerified": true,
+          "version": "2025-01-01",
+          "idempotencyKey": "n9rn7079wqXcse3GEDEXCYle9ajXmU0SUQY8zrUNAlc=",
+          "paymentStatus": "SUCCESS"
+        },
+        "valid": true,
+        "fulfil": true,
+        "action": "fulfil",
+        "httpStatus": 200
+      }
+    },
+    {
+      "id": "failed-does-not-fulfil",
+      "prompt": "The Cashfree payment_status is FAILED. Should I mark the order paid?",
+      "expect": {
+        "op": "event",
+        "input": {
+          "signatureVerified": true,
+          "version": "2025-01-01",
+          "idempotencyKey": "n9rn7079wqXcse3GEDEXCYle9ajXmU0SUQY8zrUNAlc=",
+          "paymentStatus": "FAILED"
+        },
+        "valid": true,
+        "fulfil": false,
+        "action": "record"
+      }
+    },
+    {
+      "id": "keep-decimals",
+      "prompt": "The raw Cashfree body has payment_amount 170.00. What decimal string do I keep?",
+      "expect": {
+        "op": "token",
+        "input": { "raw": "{\"payment_amount\":170.00}", "field": "payment_amount" },
+        "token": "170.00"
+      }
+    }
+  ]
+}
