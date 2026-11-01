@@ -7,7 +7,7 @@ description: >-
   check of pa, pn, am, tr, tn, mc, or mode. A link is not proof of payment.
 license: MIT
 compatibility: Requires Node.js 20 or newer. No network and no runtime dependencies.
-metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
+metadata: { version: "0.1.1", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 ---
 
 # UPI payment links
