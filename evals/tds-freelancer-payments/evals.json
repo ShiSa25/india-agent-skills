@@ -1,0 +1,111 @@
+{
+  "skill": "tds-freelancer-payments",
+  "evals": [
+    {
+      "id": "professional-under-50000",
+      "prompt": "We already paid a freelance designer ₹40,000 this year and this bill is ₹9,000. They gave a PAN. Payment date 1 June 2026. How much TDS?",
+      "expect": {
+        "input": {
+          "paymentDate": "2026-06-01",
+          "payerType": "other",
+          "payeeType": "individual",
+          "category": "professional",
+          "amountMinor": "900000",
+          "ytdMinor": "4000000",
+          "panAvailable": true
+        },
+        "tdsMinor": "0",
+        "thresholdHit": false,
+        "rateBp": 1000,
+        "section": "393(1) [Table Sl. No. 6(iii)]",
+        "oldSection": "194J"
+      }
+    },
+    {
+      "id": "professional-crosses-50000",
+      "prompt": "Same designer, but this bill is ₹11,000, so the year crosses ₹50,000. PAN is available. What TDS on 1 June 2026?",
+      "expect": {
+        "input": {
+          "paymentDate": "2026-06-01",
+          "payerType": "other",
+          "payeeType": "individual",
+          "category": "professional",
+          "amountMinor": "1100000",
+          "ytdMinor": "4000000",
+          "panAvailable": true
+        },
+        "tdsMinor": "510000",
+        "tds": "5100.00",
+        "rateBp": 1000,
+        "section": "393(1) [Table Sl. No. 6(iii)]",
+        "oldSection": "194J",
+        "paymentCode": "1027",
+        "thresholdHit": true,
+        "confirm": true
+      }
+    },
+    {
+      "id": "contractor-single-sum",
+      "prompt": "Contractor who is an individual sent one bill of ₹35,000 on 1 June 2026. Nothing earlier this year. PAN on file. TDS?",
+      "expect": {
+        "input": {
+          "paymentDate": "2026-06-01",
+          "payerType": "other",
+          "payeeType": "individual",
+          "category": "contractor",
+          "amountMinor": "3500000",
+          "ytdMinor": "0",
+          "panAvailable": true
+        },
+        "tdsMinor": "35000",
+        "tds": "350.00",
+        "rateBp": 100,
+        "section": "393(1) [Table Sl. No. 6(i)]",
+        "oldSection": "194C",
+        "paymentCode": "1023",
+        "thresholdHit": true
+      }
+    },
+    {
+      "id": "no-pan-professional",
+      "prompt": "Professional fee of ₹60,000 on 1 June 2026 and the freelancer has not given a PAN. What rate do I use?",
+      "expect": {
+        "input": {
+          "paymentDate": "2026-06-01",
+          "payerType": "other",
+          "payeeType": "individual",
+          "category": "professional",
+          "amountMinor": "6000000",
+          "ytdMinor": "0",
+          "panAvailable": false
+        },
+        "tdsMinor": "1200000",
+        "tds": "12000.00",
+        "rateBp": 2000,
+        "thresholdHit": true,
+        "confirm": true
+      }
+    },
+    {
+      "id": "day-before-new-act",
+      "prompt": "The same ₹60,000 professional fee was credited on 31 March 2026. Which Act and section apply?",
+      "expect": {
+        "input": {
+          "paymentDate": "2026-03-31",
+          "payerType": "other",
+          "payeeType": "individual",
+          "category": "professional",
+          "amountMinor": "6000000",
+          "ytdMinor": "0",
+          "panAvailable": true
+        },
+        "act": "Income-tax Act, 1961",
+        "section": "194J",
+        "oldSection": "194J",
+        "paymentCode": null,
+        "tds": "6000.00",
+        "confirm": true
+      }
+    }
+  ]
+}
