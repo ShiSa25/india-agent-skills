@@ -13,7 +13,7 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 
 # Razorpay integration
 
-Verify signatures and subunit amounts locally. Do not reimplement the Razorpay API. Orders, captures, refunds, and payment fetches go through the [Razorpay MCP server](https://razorpay.com/docs/mcp-server) at `https://mcp.razorpay.com/mcp`. The SSE URL `https://mcp.razorpay.com/sse` is deprecated from 13 Aug 2025.
+Verify signatures and subunit amounts locally. Do not reimplement the Razorpay API. Orders, captures, refunds, and payment fetches go through the [Razorpay MCP server](https://razorpay.com/docs/build/llm-docs/mcp-server.md). The remote endpoint is `https://mcp.razorpay.com/mcp`. The SSE URL `https://mcp.razorpay.com/sse` is deprecated from 13 Aug 2025 ([remote setup](https://razorpay.com/docs/build/llm-docs/mcp-server/remote.md)).
 
 ## When to use
 
@@ -72,7 +72,7 @@ Rules data is `scripts/_rules/razorpay.json`, as of 2026-11-01. Read amounts, ti
 - Capture timeout: minimum 12 minutes, default and maximum 4320 minutes (3 days). Uncaptured authorised payments are auto-refunded. Direct settlement merchants are auto-captured anyway; still wait for a capture event. [Capture settings](https://razorpay.com/docs/payments/payments/capture-settings).
 - Refunds: only `refund.processed` adds to `refundedMinor`, and only when `amountMinor <= capturedMinor - refundedMinor`. `refund.failed` and `refund.created` do not move the total. The published `refund.created` sample shows `status: processed`; follow the event name. If `paymentCaptured` is false, it is an auto-refund of an uncaptured payment: acknowledge 200, do not fulfil. If a processed refund arrives before capture, return 500 and do not store the event id yet. [Refund webhooks](https://razorpay.com/docs/webhooks/refunds).
 - Subunits: INR exponent 2 (paise). JPY and the other exponent-0 codes are whole units. KWD, BHD, OMR, IQD, JOD, and TND are exponent 3 and the last subunit digit must be 0. `295.991` is rejected unless `zeroLastDigit` is true, which yields `295990` and a warning. `KWD` `1.005` is an error. [Create an order](https://razorpay.com/docs/api/orders/create).
-- INR minimum is 100 subunits (₹1.00). The orders error says "at least INR 1.00" and the solution says greater than or equal to 100. The same accordion also says "greater than 100"; ₹1.00 is accepted. USD 50, EUR 50, GBP 30, and SGD 50 come from the [standard checkout guide](https://razorpay.com/docs/developer-tools/integrations/standard-checkout). This skill does not enforce a ₹5,00,000 maximum. The orders API says the maximum is the limit on the account.
+- INR minimum is 100 subunits (₹1.00). The orders error says "at least INR 1.00" and the solution says greater than or equal to 100. The same accordion also says "greater than 100"; ₹1.00 is accepted. USD 50, EUR 50, GBP 30, and SGD 50 are UNVERIFIED. The page that printed that table now returns 404. The current [Standard Checkout integration steps](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps) do not restate those four figures, so a result that applies them sets `confirm: true`. This skill does not enforce a ₹5,00,000 maximum. The orders API says the maximum is the limit on the account.
 
 Checkout and webhook secrets are different. After a secret rotation, retries of older webhooks still use the old webhook secret.
 

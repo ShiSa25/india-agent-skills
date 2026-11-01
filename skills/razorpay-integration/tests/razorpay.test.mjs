@@ -182,7 +182,10 @@ describe('subunits', () => {
   });
 
   test('other published minima, exponent notation, and an unknown code', () => {
-    assert.equal(explainSubunits({ amount: '0.49', currency: 'USD' }).valid, false);
+    const usd = explainSubunits({ amount: '0.49', currency: 'USD' });
+    assert.equal(usd.valid, false);
+    assert.equal(usd.confirm, true);
+    assert.ok(usd.warnings.includes(CONFIRM_SENTENCE));
     assert.equal(toSubunits('0.50', 'USD'), 50n);
     assert.equal(toSubunits('0.30', 'GBP'), 30n);
     assert.equal(explainSubunits({ amount: '1e2', currency: 'INR' }).valid, false);
@@ -199,7 +202,9 @@ describe('subunits', () => {
     assert.ok(table.value['0'].includes('JPY'));
     assert.deepEqual(table.value['3'], ['BHD', 'IQD', 'JOD', 'KWD', 'OMR', 'TND']);
     assert.equal(ruleById('razorpay', 'razorpay.amount.minimumSubunits', ON).value.INR, 100);
-    assert.equal(ruleById('razorpay', 'razorpay.amount.checkoutMinimumSubunits', ON).value.USD, 50);
+    const checkoutMinima = ruleById('razorpay', 'razorpay.amount.checkoutMinimumSubunits', ON);
+    assert.equal(checkoutMinima.value.USD, 50);
+    assert.equal(checkoutMinima.verified, false);
   });
 });
 

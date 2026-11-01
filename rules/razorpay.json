@@ -99,9 +99,9 @@
       "unit": "subunits",
       "effectiveFrom": "2026-11-01",
       "effectiveTo": null,
-      "source": "https://razorpay.com/docs/developer-tools/integrations/standard-checkout",
-      "verified": true,
-      "note": "Minimums printed on the standard checkout guide. The guide also shows a 50000000 subunit example maximum for INR; this skill does not enforce that figure because the Orders API describes the maximum as account-specific."
+      "source": "https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps",
+      "verified": false,
+      "note": "UNVERIFIED. The former developer-tools standard checkout guide that listed these four minima now returns 404. The current Standard Checkout integration steps page documents the amount field and a generic minimum-amount error, not USD 50, EUR 50, GBP 30, or SGD 50. This skill still applies those four figures."
     },
     {
       "id": "razorpay.currency.exponents",
