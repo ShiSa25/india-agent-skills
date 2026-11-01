@@ -106,12 +106,17 @@ export function explainSubunits(input) {
   const trailing = ruleById('razorpay', 'razorpay.currency.trailingZero', onDate);
   const minima = ruleById('razorpay', 'razorpay.amount.minimumSubunits', onDate);
   const checkoutMinima = ruleById('razorpay', 'razorpay.amount.checkoutMinimumSubunits', onDate);
-  const rules = [exponents, trailing, minima, checkoutMinima];
+  const rulesFor = (currency) => {
+    const rules = [exponents, trailing, minima];
+    if (currency && Object.hasOwn(checkoutMinima.value, currency)) rules.push(checkoutMinima);
+    return rules;
+  };
   const code = readField(input.currency, 'currency');
-  if (code.error) return result(domain, false, rules, { errors: [code.error], subunits: null, subunitsText: null });
+  if (code.error) return result(domain, false, rulesFor(), { errors: [code.error], subunits: null, subunitsText: null });
   const currency = code.value.toUpperCase();
+  const rules = rulesFor(currency);
   if (!/^[A-Z]{3}$/.test(currency)) {
-    return result(domain, false, rules, {
+    return result(domain, false, rulesFor(), {
       errors: ['currency must be a 3-letter ISO code'],
       subunits: null,
       subunitsText: null,
@@ -119,7 +124,7 @@ export function explainSubunits(input) {
   }
   const exponent = exponentOf(exponents.value, currency);
   if (exponent === null) {
-    return result(domain, false, rules, {
+    return result(domain, false, rulesFor(), {
       errors: [`${currency} is not in the Razorpay currency table`],
       subunits: null,
       subunitsText: null,
