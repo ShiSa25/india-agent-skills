@@ -106,8 +106,8 @@ Exit `0` valid, `1` invalid, `2` usage error. Stdout is one JSON object. `--json
 | `cashfree-integration` | Verify Cashfree webhook signatures and reject stale timestamps. Use when adding a Cashfree webhook. | coming in v0.1 |
 | `upi-payment-links` | Build unsigned UPI payment links and QR SVGs. Use when a user asks for a UPI link or QR. A link is not proof of payment. | coming in v0.1 |
 | `inr-formatting` | Format rupees in Indian grouping and in words. Use when showing an amount or an amount-in-words line. | coming in v0.1 |
-| `indian-id-validators` | Format-check PAN, TAN, IFSC, PIN, and Indian mobile numbers. Use when a user pastes one of those IDs. An IFSC directory lookup is opt-in. | coming in v0.1 |
-| `aadhaar-safe-handling` | Verhoeff-check, mask, and scan for Aadhaar numbers. Use when text may contain an Aadhaar. Never log a full number. | coming in v0.1 |
+| [indian-id-validators](skills/indian-id-validators/SKILL.md) | Format-check an Indian PAN (4th-character holder type), TAN, IFSC, PIN code, or mobile number. Use when a user pastes a PAN, TAN, IFSC, PIN, or +91 mobile, or asks whether an IFSC matches the RBI pattern. An IFSC directory lookup is opt-in and is not proof that a branch is live. | 0.1.0 |
+| [aadhaar-safe-handling](skills/aadhaar-safe-handling/SKILL.md) | Check, mask, and scan for Aadhaar numbers with the Verhoeff checksum, and state the storage limits in the Aadhaar Act and the UIDAI data-vault circular. Use when text, logs, or a repository may contain an Aadhaar or Virtual ID. Never log a full number. | 0.1.0 |
 | `dpdp-compliance-check` | Scan a schema for personal data and list DPDP Act and Rules dates. Use when reviewing a schema or a privacy checklist. | coming in v0.1 |
 | `sms-otp-dlt` | Lint DLT SMS templates and OTP handling. Use when writing an OTP SMS or a DLT template. | coming in v0.1 |
 <!-- skills:end -->

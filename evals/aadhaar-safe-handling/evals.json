@@ -1,0 +1,63 @@
+{
+  "skill": "aadhaar-safe-handling",
+  "evals": [
+    {
+      "id": "specimen-valid",
+      "prompt": "Check this synthetic Aadhaar and mask it: 234123412346",
+      "expect": {
+        "tool": "check",
+        "input": "234123412346",
+        "valid": true,
+        "kind": "aadhaar",
+        "masked": "XXXX XXXX 2346",
+        "confirm": false,
+        "warningIncludes": "does not mean UIDAI issued"
+      }
+    },
+    {
+      "id": "nines-no-leading-warning",
+      "prompt": "Does 999999999999 fail because it starts with 9?",
+      "expect": {
+        "tool": "check",
+        "input": "999999999999",
+        "valid": true,
+        "masked": "XXXX XXXX 9999",
+        "confirm": false
+      }
+    },
+    {
+      "id": "leading-one-warning",
+      "prompt": "123456789010 passes Verhoeff. Should I reject it because it starts with 1?",
+      "expect": {
+        "tool": "check",
+        "input": "123456789010",
+        "valid": true,
+        "masked": "XXXX XXXX 9010",
+        "confirm": true,
+        "warningIncludes": "Leading digit is 0 or 1"
+      }
+    },
+    {
+      "id": "spaces",
+      "prompt": "The form has 2341 2341 2346 with spaces. Is the checksum valid?",
+      "expect": {
+        "tool": "check",
+        "input": "2341 2341 2346",
+        "valid": true,
+        "masked": "XXXX XXXX 2346",
+        "warningIncludes": "Spaces or hyphens"
+      }
+    },
+    {
+      "id": "scan-masks-and-ignores-noise",
+      "prompt": "Scan this log. Mask anything that is really an Aadhaar. Ignore the timestamp and the 12-digit id that fails Verhoeff.",
+      "expect": {
+        "tool": "scan",
+        "input": "ts=202611011530 ref=123456789012 aadhaar=2341-2341-2346",
+        "count": 1,
+        "masked": "XXXX XXXX 2346",
+        "kind": "aadhaar"
+      }
+    }
+  ]
+}
