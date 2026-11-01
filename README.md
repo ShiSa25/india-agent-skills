@@ -98,8 +98,8 @@ Exit `0` valid, `1` invalid, `2` usage error. Stdout is one JSON object. `--json
 | Skill | What it does | Status |
 | --- | --- | --- |
 | [gstin-validator](skills/gstin-validator/SKILL.md) | Validate an Indian GSTIN: checksum, state code, and regular, TDS, TCS, UIN, or NRTP/OIDAR shape. A valid checksum does not prove the GSTIN is registered. Use when a user pastes a GSTIN, checks an invoice, or builds a GST form. | 0.1.0 |
-| `gst-invoice` | Build a GST tax invoice with CGST, SGST or UTGST, IGST, and export endorsements. Use when creating an invoice, credit note, or export or SEZ bill. | coming in v0.1 |
-| `gst-e-invoice-json` | Build and validate GST e-invoice JSON (schema 1.1) without calling an IRP. Use when a user needs an IRN payload or a schema check. | coming in v0.1 |
+| [gst-invoice](skills/gst-invoice/SKILL.md) | Build an Indian GST tax invoice, credit note, or debit note: Rule 46 fields, CGST and SGST or UTGST, IGST for inter-state, export, and SEZ supplies, LUT endorsements, and paise rounding. Use when creating an invoice, a credit note, or an export or SEZ bill. Does not file a return or call the GST portal. | 0.1.0 |
+| [gst-e-invoice-json](skills/gst-e-invoice-json/SKILL.md) | Build and validate GST e-invoice JSON for schema 1.1 (B2B, SEZ, export, and deemed export), including the AATO threshold and the 30-day IRP reporting check. Use when a user needs an IRN payload or a schema check. Never submits the payload to the IRP or the GST portal. | 0.1.0 |
 | `freelancer-export-compliance` | Financial year, LUT, GST realisation, and FEMA deadlines for an export of services. Use when a freelancer invoices a foreign or SEZ client. | coming in v0.1 |
 | `tds-freelancer-payments` | TDS on contractor and professional payments under the Income-tax Act 2025. Use when computing a deduction, a threshold, or the no-PAN rate. | coming in v0.1 |
 | `razorpay-integration` | Verify Razorpay payment signatures and webhooks, and convert amounts to subunits. Use when adding Razorpay checkout or a webhook. | coming in v0.1 |

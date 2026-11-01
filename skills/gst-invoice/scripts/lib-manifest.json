@@ -1,0 +1,4 @@
+{
+  "lib": ["disclaimer.mjs", "fy.mjs", "gstin.mjs", "money.mjs", "rules.mjs"],
+  "rules": ["gst.json", "ids.json"]
+}
