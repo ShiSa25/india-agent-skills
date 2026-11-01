@@ -81,7 +81,7 @@ Rules data is `scripts/_rules/gst.json`, as of 2026-11-01. Do not hardcode a rat
 - Pass `electronicInvoice: true` only for an electronic invoice under the Information Technology Act, 2000, where Rule 46 drops the signature.
 - Code `25` or `28` warns `legacy state code`. Code `96` is a place of supply, not a supplier GSTIN.
 - The rupee sign in the HTML is `₹`. The script does not write `Rs.`.
-- Amounts in words use Thousand, Lakh, and Crore. Above 99 crore the same scale continues ("Hundred Crore"). There is no "Arab". `inr-formatting` is not in this repo, so the helper lives in `scripts/words.mjs`.
+- Amounts in words use Thousand, Lakh, and Crore. Above 99 crore the same scale continues ("Hundred Crore"). There is no "Arab". The helper is `scripts/words.mjs`, so an installed copy of this skill stands on its own. The same scale lives in `inr-formatting`.
 
 ## Example prompts
 

@@ -1,6 +1,8 @@
 # india-agent-skills — Build SPEC v0.1
 
 Last checked: 1 Nov 2026 (IST). Repo: github.com/ShiSa25/india-agent-skills (MIT). Distribution: GitHub only, no npm.
+
+v0.1.0 shipped on 2026-11-01 with all 13 skills. Where a primary source in a skill's `references/sources.md` disagrees with a rule below, the skill follows the source. Those differences, and every UNVERIFIED item that still sets `confirm: true`, are in [CHANGELOG.md](CHANGELOG.md).
 Every rule below has a source and an "as of" date. **UNVERIFIED** means no primary source was opened. Code must not assert UNVERIFIED rules as fact: print them with `confirm: true` and the text "Confirm with the official source before relying on this."
 
 ---------------------------------------------------------------------
