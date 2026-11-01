@@ -1,0 +1,18 @@
+{
+  "name": "india-agent-skills",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tested, source-linked Agent Skills for Indian GST, payments, IDs, and compliance.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "validate": "node tools/validate-skills.mjs && node tools/validate-frontmatter.mjs && node tools/sync-lib.mjs --check && node tools/check-rules.mjs && node tools/grep-money.mjs && node tools/scan-aadhaar.mjs && node tools/gen-readme.mjs --check",
+    "test": "node --test",
+    "readme": "node tools/gen-readme.mjs",
+    "sync-lib": "node tools/sync-lib.mjs",
+    "link-check": "node tools/link-check.mjs"
+  }
+}

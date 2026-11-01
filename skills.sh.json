@@ -1,0 +1,26 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "GST",
+      "description": "GSTIN checks, tax invoices, and e-invoice JSON.",
+      "skills": ["gstin-validator", "gst-invoice", "gst-e-invoice-json"]
+    },
+    {
+      "title": "Export and TDS",
+      "description": "Export-of-services deadlines and TDS on freelancer payments.",
+      "skills": ["freelancer-export-compliance", "tds-freelancer-payments"]
+    },
+    {
+      "title": "Payments",
+      "description": "Razorpay, Cashfree, UPI links, and rupee formatting.",
+      "skills": ["razorpay-integration", "cashfree-integration", "upi-payment-links", "inr-formatting"]
+    },
+    {
+      "title": "IDs and privacy",
+      "description": "Indian ID formats, Aadhaar handling, DPDP, and DLT SMS.",
+      "skills": ["indian-id-validators", "aadhaar-safe-handling", "dpdp-compliance-check", "sms-otp-dlt"]
+    }
+  ]
+}

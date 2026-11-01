@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # SPEC §0.6 names Node 20 and 22. This workflow also runs 24,
+        # which the phase-0 request asked for. Helpers do not depend on ICU.
+        node-version: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      # SPEC §0.6 step 2 asks for `npx skills-ref validate`, pinned to a commit.
+      # The spec names neither the package nor the commit, and validation must
+      # pass with no network, so `npm run validate` uses tools/validate-frontmatter.mjs.
+      - name: Test
+        run: npm test
+      - name: Validate
+        run: npm run validate

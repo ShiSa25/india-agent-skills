@@ -1,0 +1,71 @@
+{
+  "skill": "gstin-validator",
+  "evals": [
+    {
+      "id": "reliance-state",
+      "prompt": "Validate this GSTIN and tell me the state: 27AAACR5055K1Z7",
+      "expect": {
+        "gstin": "27AAACR5055K1Z7",
+        "valid": true,
+        "type": "regular",
+        "stateCode": "27",
+        "stateName": "Maharashtra",
+        "pan": "AAACR5055K",
+        "confirm": false
+      }
+    },
+    {
+      "id": "blog-checksum",
+      "prompt": "Is 9917USA00013OS5 a valid GSTIN? I copied it from a blog.",
+      "expect": {
+        "gstin": "9917USA00013OS5",
+        "valid": false,
+        "type": "nrtp_oidar",
+        "stateCode": "99",
+        "errorIncludes": "expected P"
+      }
+    },
+    {
+      "id": "lowercase",
+      "prompt": "The invoice shows 27aaacr5055k1z7. Is that a real GSTIN?",
+      "expect": {
+        "gstin": "27aaacr5055k1z7",
+        "valid": true,
+        "normalized": "27AAACR5055K1Z7",
+        "warningIncludes": "Lowercase"
+      }
+    },
+    {
+      "id": "legacy-daman",
+      "prompt": "Check the synthetic GSTIN 25AAACX0000A1ZF and tell me if the state code is current.",
+      "expect": {
+        "gstin": "25AAACX0000A1ZF",
+        "valid": true,
+        "type": "regular",
+        "stateName": "Daman and Diu",
+        "warningIncludes": "legacy state code"
+      }
+    },
+    {
+      "id": "embassy-uin",
+      "prompt": "What kind of GSTIN is 2717USA00046UNV?",
+      "expect": {
+        "gstin": "2717USA00046UNV",
+        "valid": true,
+        "type": "uin",
+        "pan": null,
+        "stateName": "Maharashtra"
+      }
+    },
+    {
+      "id": "bad-pan-holder",
+      "prompt": "A test fixture uses 29ABCDE1234F1ZW. Can I put that on an invoice?",
+      "expect": {
+        "gstin": "29ABCDE1234F1ZW",
+        "valid": false,
+        "type": "regular",
+        "errorIncludes": "PAN"
+      }
+    }
+  ]
+}

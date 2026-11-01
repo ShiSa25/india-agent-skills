@@ -1,0 +1,54 @@
+[
+  {
+    "name": "gstin-validator",
+    "description": "Validate an Indian GSTIN. Use when a user pastes a GSTIN or checks an invoice."
+  },
+  {
+    "name": "gst-invoice",
+    "description": "Build a GST tax invoice with CGST, SGST or UTGST, IGST, and export endorsements. Use when creating an invoice, credit note, or export or SEZ bill."
+  },
+  {
+    "name": "gst-e-invoice-json",
+    "description": "Build and validate GST e-invoice JSON (schema 1.1) without calling an IRP. Use when a user needs an IRN payload or a schema check."
+  },
+  {
+    "name": "freelancer-export-compliance",
+    "description": "Financial year, LUT, GST realisation, and FEMA deadlines for an export of services. Use when a freelancer invoices a foreign or SEZ client."
+  },
+  {
+    "name": "tds-freelancer-payments",
+    "description": "TDS on contractor and professional payments under the Income-tax Act 2025. Use when computing a deduction, a threshold, or the no-PAN rate."
+  },
+  {
+    "name": "razorpay-integration",
+    "description": "Verify Razorpay payment signatures and webhooks, and convert amounts to subunits. Use when adding Razorpay checkout or a webhook."
+  },
+  {
+    "name": "cashfree-integration",
+    "description": "Verify Cashfree webhook signatures and reject stale timestamps. Use when adding a Cashfree webhook."
+  },
+  {
+    "name": "upi-payment-links",
+    "description": "Build unsigned UPI payment links and QR SVGs. Use when a user asks for a UPI link or QR. A link is not proof of payment."
+  },
+  {
+    "name": "inr-formatting",
+    "description": "Format rupees in Indian grouping and in words. Use when showing an amount or an amount-in-words line."
+  },
+  {
+    "name": "indian-id-validators",
+    "description": "Format-check PAN, TAN, IFSC, PIN, and Indian mobile numbers. Use when a user pastes one of those IDs. An IFSC directory lookup is opt-in."
+  },
+  {
+    "name": "aadhaar-safe-handling",
+    "description": "Verhoeff-check, mask, and scan for Aadhaar numbers. Use when text may contain an Aadhaar. Never log a full number."
+  },
+  {
+    "name": "dpdp-compliance-check",
+    "description": "Scan a schema for personal data and list DPDP Act and Rules dates. Use when reviewing a schema or a privacy checklist."
+  },
+  {
+    "name": "sms-otp-dlt",
+    "description": "Lint DLT SMS templates and OTP handling. Use when writing an OTP SMS or a DLT template."
+  }
+]
