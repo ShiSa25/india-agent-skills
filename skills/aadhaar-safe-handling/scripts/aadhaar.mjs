@@ -7,9 +7,12 @@ import { extname, join, relative } from 'node:path';
 import { CONFIRM_SENTENCE, disclaimer } from './_lib/disclaimer.mjs';
 import { loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
 import {
+  aadhaarCandidates,
+  foldAadhaarLine,
   generateSynthetic,
   leadingDigitFinding,
   normalizeDigits,
+  redactVerhoeffNumbers,
   verhoeffValid,
 } from './_lib/verhoeff.mjs';
 
@@ -19,8 +22,6 @@ const SCAN_LIMIT = 2 * 1024 * 1024;
 const ZERO_WIDTH = new Set([
   0x180e, 0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x2060, 0x2061, 0x2062, 0x2063, 0x2064, 0xfeff,
 ]);
-const AADHAAR_RE = /(?<![A-Za-z0-9])(\d{4}(?:[ -]\d{4}){2}|\d{12})(?![A-Za-z0-9])/g;
-const VID_RE = /(?<![A-Za-z0-9])(\d{4}(?:[ -]\d{4}){3}|\d{16})(?![A-Za-z0-9])/g;
 const VID_LABEL = /\b(?:vid|virtual[\s-]*id)\b/i;
 const SKIP_DIR = new Set(['.git', 'node_modules', '.hg']);
 const TEXT_EXT = new Set([
@@ -89,12 +90,7 @@ export function inspectText(text) {
   let skippedLines = 0;
   const lines = text.split('\n');
   for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    if (Buffer.byteLength(line, 'utf8') > LIMIT) {
-      skippedLines += 1;
-      continue;
-    }
-    findings.push(...scanLine(fold(line), index + 1, pack));
+    findings.push(...scanLine(lines[index], index + 1, pack));
   }
   return { findings, skippedLines };
 }
@@ -195,23 +191,23 @@ function classify(digits, date, shell, warnings) {
 }
 
 function scanLine(line, lineNumber, pack) {
+  const folded = foldAadhaarLine(line);
+  const hits = aadhaarCandidates(folded);
   const findings = [];
   const spans = [];
-  if (VID_LABEL.test(line)) {
-    for (const match of line.matchAll(new RegExp(VID_RE.source, 'g'))) {
-      const digits = match[1].replace(/[ -]/g, '');
-      if (digits.length !== pack.vidLength) continue;
-      findings.push({ line: lineNumber, masked: `${pack.vidMask}${digits.slice(-4)}`, kind: 'vid' });
-      spans.push([match.index, match.index + match[0].length]);
+  if (VID_LABEL.test(folded)) {
+    for (const hit of hits) {
+      if (hit.digits.length !== pack.vidLength) continue;
+      findings.push({ line: lineNumber, masked: `${pack.vidMask}${hit.digits.slice(-4)}`, kind: 'vid' });
+      spans.push([hit.start, hit.end]);
     }
   }
-  for (const match of line.matchAll(new RegExp(AADHAAR_RE.source, 'g'))) {
-    if (spans.some(([start, end]) => match.index < end && match.index + match[0].length > start)) continue;
-    const digits = match[1].replace(/[ -]/g, '');
-    if (digits.length !== pack.aadhaarLength) continue;
-    if (isTimestamp(digits)) continue;
-    if (!verhoeffValid(digits)) continue;
-    findings.push({ line: lineNumber, masked: `${pack.aadhaarMask}${digits.slice(-4)}`, kind: 'aadhaar' });
+  for (const hit of hits) {
+    if (hit.digits.length !== pack.aadhaarLength) continue;
+    if (spans.some(([start, end]) => hit.start < end && hit.end > start)) continue;
+    if (isTimestamp(hit.digits)) continue;
+    if (!verhoeffValid(hit.digits)) continue;
+    findings.push({ line: lineNumber, masked: `${pack.aadhaarMask}${hit.digits.slice(-4)}`, kind: 'aadhaar' });
   }
   return findings;
 }
@@ -240,26 +236,17 @@ function walk(root, dir, findings) {
     if (!info.isFile() || info.size > SCAN_LIMIT) continue;
     const text = readFileSync(full, 'utf8');
     if (text.includes('\0')) continue;
-    const relativePath = relative(root, full);
+    const relativePath = redactVerhoeffNumbers(relative(root, full));
     for (const finding of scanText(text)) findings.push({ file: relativePath, ...finding });
+    for (const finding of scanText(entry.name)) {
+      findings.push({ file: relativePath, ...finding, line: 0 });
+    }
   }
 }
 
 function isTextFile(name) {
   if (name === '.env' || name.endsWith('.log')) return true;
   return TEXT_EXT.has(extname(name));
-}
-
-function fold(line) {
-  let out = '';
-  for (const ch of line.normalize('NFKC')) {
-    const cp = ch.codePointAt(0);
-    if (ZERO_WIDTH.has(cp)) continue;
-    if (cp >= 0x202a && cp <= 0x202e) continue;
-    if (cp >= 0x2066 && cp <= 0x2069) continue;
-    out += ch;
-  }
-  return out;
 }
 
 function containsBlocked(value) {

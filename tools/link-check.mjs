@@ -11,6 +11,7 @@
  * endpoints are skipped only when they are on BARE_ENDPOINTS.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { isIP } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,6 +48,30 @@ export function isExampleHost(hostname) {
 
 export function isBareEndpoint(url) {
   return BARE_ENDPOINTS.some((prefix) => url === prefix || url.startsWith(prefix));
+}
+
+/** https only, no userinfo, no loopback, link-local, or private address literal. */
+export function isSafeProbeUrl(raw) {
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:') return false;
+  if (parsed.username || parsed.password) return false;
+  return !isBlockedHost(parsed.hostname);
+}
+
+export function isBlockedHost(hostname) {
+  const host = String(hostname).toLowerCase().replace(/\.$/, '').replace(/^\[|\]$/g, '');
+  if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
+    return true;
+  }
+  const kind = isIP(host);
+  if (kind === 4) return isPrivateV4(host);
+  if (kind === 6) return isPrivateV6(host);
+  return false;
 }
 
 /**
@@ -106,21 +131,68 @@ function collectFile(full, urls) {
 }
 
 async function probe(url) {
-  let last = 'fetch failed';
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        redirect: 'follow',
-        signal: AbortSignal.timeout(20000),
-        headers: { 'user-agent': 'india-agent-skills-link-check' },
-      });
-      return classifyLink(url, { status: response.status });
-    } catch (error) {
-      last = error.cause?.code || error.message;
+  if (!isSafeProbeUrl(url)) return classifyLink(url, { error: 'blocked-url' });
+  let current = url;
+  for (let hop = 0; hop < 5; hop += 1) {
+    let last = 'fetch failed';
+    let response;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        response = await fetch(current, {
+          method: 'GET',
+          redirect: 'manual',
+          signal: AbortSignal.timeout(20000),
+          headers: { 'user-agent': 'india-agent-skills-link-check' },
+        });
+        last = '';
+        break;
+      } catch (error) {
+        last = error.cause?.code || error.message;
+      }
     }
+    if (!response) return classifyLink(url, { error: last });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (!location) return classifyLink(url, { status: response.status });
+      let next;
+      try {
+        next = new URL(location, current).href;
+      } catch {
+        return classifyLink(url, { error: 'blocked-redirect' });
+      }
+      if (!isSafeProbeUrl(next)) return classifyLink(url, { error: 'blocked-redirect' });
+      current = next;
+      continue;
+    }
+    return classifyLink(url, { status: response.status });
   }
-  return classifyLink(url, { error: last });
+  return classifyLink(url, { error: 'too many redirects' });
+}
+
+function isPrivateV4(host) {
+  const parts = host.split('.').map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return true;
+  const [a, b] = parts;
+  if (a === 0 || a === 10 || a === 127) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true;
+  if (a === 192 && b === 0 && parts[2] === 2) return true;
+  if (a === 198 && (b === 18 || b === 19 || b === 51)) return true;
+  if (a >= 224) return true;
+  return false;
+}
+
+function isPrivateV6(host) {
+  const lower = host.toLowerCase();
+  if (lower === '::' || lower === '::1') return true;
+  if (lower.startsWith('fe80:') || lower.startsWith('fc') || lower.startsWith('fd')) return true;
+  if (lower.startsWith('::ffff:')) {
+    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    return mapped ? isPrivateV4(mapped[1]) : true;
+  }
+  return false;
 }
 
 async function run() {

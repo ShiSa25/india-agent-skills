@@ -66,9 +66,12 @@ export function pct(minor, rateBasisPoints, mode = 'half-up') {
 }
 
 function asRate(rate) {
-  if (typeof rate === 'bigint') return rate;
-  if (typeof rate === 'number' && Number.isInteger(rate)) return BigInt(rate);
-  throw new TypeError('rate must be integer basis points');
+  let value;
+  if (typeof rate === 'bigint') value = rate;
+  else if (typeof rate === 'number' && Number.isInteger(rate)) value = BigInt(rate);
+  else throw new TypeError('rate must be integer basis points');
+  if (value < 0n) throw new Error('rate must be a non-negative integer of basis points');
+  return value;
 }
 
 function divHalfAwayFromZero(numerator, denominator) {

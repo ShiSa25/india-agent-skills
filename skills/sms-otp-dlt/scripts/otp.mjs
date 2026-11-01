@@ -114,7 +114,7 @@ export function buildOtpRequest(input) {
     confirm,
     disclaimer: disclaimer(domain.asOf),
   };
-  if (typeof input.authkey === 'string' && input.authkey && JSON.stringify(payload).includes(input.authkey)) {
+  if (typeof input.authkey === 'string' && input.authkey && containsSecret(payload, input.authkey)) {
     throw usage('Refusing to print the authkey.');
   }
   return payload;
@@ -146,7 +146,14 @@ export function reviewOtp(input) {
     if (code.includes('Math.random')) errors.push('Generate the OTP with crypto.randomInt, not Math.random.');
     if (!code.includes('randomInt')) warnings.push('OTP generation should call crypto.randomInt.');
     for (const line of code.split('\n')) {
-      if (logsOtp(line)) errors.push('The OTP must never be logged.');
+      const leak = otpLeak(line);
+      if (leak) errors.push(leak);
+    }
+    if (flagsUnsafeOtpCompare(code)) {
+      errors.push('Compare the OTP with crypto.timingSafeEqual after a length check. Do not use == or ===.');
+    }
+    if (code.includes('timingSafeEqual') && !code.includes('.length')) {
+      warnings.push('Call timingSafeEqual only after the two buffers have the same length. It throws when the lengths differ.');
     }
     const ttl = assignedNumber(code, ['ttlMinutes', 'otpExpiryMinutes', 'otp_expiry', 'ttl']);
     if (ttl === null) warnings.push(`No TTL was found. Skill practice is ${expiryRule.value.practiceMin} to ${expiryRule.value.practiceMax} minutes.`);
@@ -218,25 +225,50 @@ function isParamKey(key) {
   return true;
 }
 
-function logsOtp(line) {
-  const lower = line.toLowerCase();
-  const logs = lower.includes('console.log') || lower.includes('console.debug') || lower.includes('console.info') || lower.includes('console.warn') || lower.includes('console.error') || lower.includes('logger.');
-  if (!logs) return false;
-  return hasWord(line, 'otp');
-}
-
-function hasWord(line, word) {
-  const lower = line.toLowerCase();
-  let i = 0;
-  while (i < lower.length) {
-    const at = lower.indexOf(word, i);
-    if (at === -1) return false;
-    const before = at === 0 ? '' : lower[at - 1];
-    const after = at + word.length >= lower.length ? '' : lower[at + word.length];
-    if (!isWord(before) && !isWord(after)) return true;
-    i = at + word.length;
+function containsSecret(value, secret) {
+  if (typeof value === 'string') return secret.length > 0 && value.includes(secret);
+  if (Array.isArray(value)) return value.some((item) => containsSecret(item, secret));
+  if (value && typeof value === 'object') {
+    return Object.values(value).some((item) => containsSecret(item, secret));
   }
   return false;
+}
+
+function otpLeak(line) {
+  const lower = line.toLowerCase();
+  if (lower.includes('otplength') || lower.includes('otp_length') || lower.includes('otpexpiry') || lower.includes('otp_expiry')) {
+    return '';
+  }
+  if (!lower.includes('otp') && !lower.includes('passcode')) return '';
+  if (
+    lower.includes('console.')
+    || lower.includes('console[')
+    || lower.includes('logger.')
+    || lower.includes('process.stdout')
+    || lower.includes('process.stderr')
+  ) {
+    return 'The OTP must never be logged.';
+  }
+  if (lower.includes('res.send') || lower.includes('res.json') || lower.includes('res.write') || lower.includes('reply.send')) {
+    return 'The OTP must never be written to a response.';
+  }
+  return '';
+}
+
+function flagsUnsafeOtpCompare(code) {
+  const re = /([A-Za-z_][A-Za-z0-9_]*)\s*(===|!==|==|!=)\s*([A-Za-z_][A-Za-z0-9_]*)/g;
+  let match = re.exec(code);
+  while (match) {
+    if (isOtpValueName(match[1]) || isOtpValueName(match[3])) return true;
+    match = re.exec(code);
+  }
+  return false;
+}
+
+function isOtpValueName(token) {
+  const lower = token.toLowerCase();
+  if (/length|expir|minute|ttl|limit|attempt|template|header|placeholder|practice|url/.test(lower)) return false;
+  return lower.includes('otp') || lower.includes('passcode');
 }
 
 function assignedNumber(code, names) {
@@ -253,10 +285,4 @@ function assignedNumber(code, names) {
     if (num) return Number(num);
   }
   return null;
-}
-
-function isWord(char) {
-  if (!char) return false;
-  const lower = char.toLowerCase();
-  return (lower >= 'a' && lower <= 'z') || (char >= '0' && char <= '9') || char === '_';
 }

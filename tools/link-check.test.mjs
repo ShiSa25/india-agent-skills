@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { classifyLink, cleanUrl, extractDocUrls, isBareEndpoint, isExampleHost, summarizeLinkResults } from './link-check.mjs';
+import { classifyLink, cleanUrl, extractDocUrls, isBareEndpoint, isBlockedHost, isExampleHost, isSafeProbeUrl, summarizeLinkResults } from './link-check.mjs';
 
 describe('link-check extraction', () => {
   test('strips trailing markdown punctuation', () => {
@@ -30,6 +30,18 @@ describe('link-check extraction', () => {
       'https://razorpay.com/docs/api/orders/create',
       'https://www.cashfree.com/docs/tools-ai/mcp-server',
     ]);
+  });
+
+  test('probe URLs stay on public https hosts', () => {
+    assert.equal(isSafeProbeUrl('https://razorpay.com/docs'), true);
+    assert.equal(isSafeProbeUrl('http://razorpay.com/docs'), false);
+    assert.equal(isSafeProbeUrl('https://user:pass@razorpay.com/docs'), false);
+    assert.equal(isSafeProbeUrl('https://169.254.169.254/latest/meta-data'), false);
+    assert.equal(isSafeProbeUrl('https://127.0.0.1/'), false);
+    assert.equal(isSafeProbeUrl('https://10.1.2.3/'), false);
+    assert.equal(isSafeProbeUrl('https://localhost/'), false);
+    assert.equal(isBlockedHost('::1'), true);
+    assert.equal(isSafeProbeUrl('https://[::1]/'), false);
   });
 
   test('example hosts and bare endpoints are classified', () => {

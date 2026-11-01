@@ -594,7 +594,7 @@ node skills/razorpay-integration/scripts/verify-webhook.mjs --json '{"rawBody":"
 Fulfil decision. Exit `0`.
 
 ```bash
-node skills/razorpay-integration/scripts/decide-event.mjs --json '{"signatureVerified":true,"eventId":"evt_1","event":"payment.captured","amountMinor":"50000"}'
+node skills/razorpay-integration/scripts/decide-event.mjs --json '{"signatureVerified":true,"eventId":"evt_1","event":"payment.captured","amountMinor":"50000","expectedMinor":"50000"}'
 ```
 
 ```json
@@ -647,7 +647,7 @@ node skills/cashfree-integration/scripts/verify-webhook.mjs --json '{"rawBody":"
 Fulfil on `SUCCESS`. Exit `0`.
 
 ```bash
-node skills/cashfree-integration/scripts/decide-event.mjs --json '{"signatureVerified":true,"version":"2025-01-01","idempotencyKey":"n9rn7079wqXcse3GEDEXCYle9ajXmU0SUQY8zrUNAlc=","paymentStatus":"SUCCESS"}'
+node skills/cashfree-integration/scripts/decide-event.mjs --json '{"signatureVerified":true,"version":"2025-01-01","idempotencyKey":"n9rn7079wqXcse3GEDEXCYle9ajXmU0SUQY8zrUNAlc=","paymentStatus":"SUCCESS","paymentAmount":"170.00","expectedAmount":"170.00"}'
 ```
 
 ```json

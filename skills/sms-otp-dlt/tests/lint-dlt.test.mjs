@@ -310,6 +310,28 @@ console.log(otp);`,
     assert.equal(bad.valid, false);
     assert.ok(bad.errors.some((error) => error.includes('randomInt')));
     assert.ok(bad.errors.some((error) => error.includes('never be logged')));
+
+    const renamed = reviewOtp({
+      asOf: '2026-11-01',
+      code: 'console.log(theOtp);\nres.json({ otpCode });\nif (otp === stored) {}\n',
+    });
+    assert.equal(renamed.valid, false);
+    assert.ok(renamed.errors.some((error) => error.includes('never be logged')));
+    assert.ok(renamed.errors.some((error) => error.includes('response')));
+    assert.ok(renamed.errors.some((error) => error.includes('timingSafeEqual')));
+
+    const secret = 'say "hello" key-99';
+    assert.throws(
+      () => buildOtpRequest({
+        asOf: '2026-11-01',
+        templateId: 'tpl_otp_01',
+        mobile: '919800000000',
+        template: 'Your OTP is ##OTP##. - Acme',
+        params: { Param1: secret },
+        authkey: secret,
+      }),
+      /authkey/,
+    );
   });
 });
 
