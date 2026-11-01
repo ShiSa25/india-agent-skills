@@ -108,8 +108,8 @@ Exit `0` valid, `1` invalid, `2` usage error. Stdout is one JSON object. `--json
 | `inr-formatting` | Format rupees in Indian grouping and in words. Use when showing an amount or an amount-in-words line. | coming in v0.1 |
 | `indian-id-validators` | Format-check PAN, TAN, IFSC, PIN, and Indian mobile numbers. Use when a user pastes one of those IDs. An IFSC directory lookup is opt-in. | coming in v0.1 |
 | `aadhaar-safe-handling` | Verhoeff-check, mask, and scan for Aadhaar numbers. Use when text may contain an Aadhaar. Never log a full number. | coming in v0.1 |
-| `dpdp-compliance-check` | Scan a schema for personal data and list DPDP Act and Rules dates. Use when reviewing a schema or a privacy checklist. | coming in v0.1 |
-| `sms-otp-dlt` | Lint DLT SMS templates and OTP handling. Use when writing an OTP SMS or a DLT template. | coming in v0.1 |
+| [dpdp-compliance-check](skills/dpdp-compliance-check/SKILL.md) | Build a DPDP Act 2023 and DPDP Rules 2025 readiness checklist: consent notice, purpose limitation, children's data and verifiable parental consent, breach timelines, retention and erasure, grievance contact, significant data fiduciary duties, cross-border transfer, and Consent Managers, with the 13 November 2025 phases and Schedule penalties. Scan Prisma, SQL, and TypeScript for personal-data fields. Use when a schema or a privacy review needs the phased dates or a field-to-checklist map. | 0.1.0 |
+| [sms-otp-dlt](skills/sms-otp-dlt/SKILL.md) | Lint a TRAI DLT SMS template for {#var#} variables, the 11-character header and -P/-S/-T/-G suffix, category (transactional, service-implicit, service-explicit, promotional), URL whitelisting from 1 October 2024, and PE-TM chain rejection from 11 December 2024. Shape an MSG91 SendOTP request without calling the network. Use when writing an OTP SMS, a DLT template, or an MSG91 OTP call. | 0.1.0 |
 <!-- skills:end -->
 
 ## Safety
