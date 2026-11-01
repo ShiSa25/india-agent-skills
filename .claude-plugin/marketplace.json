@@ -1,0 +1,17 @@
+{
+  "name": "india-agent-skills",
+  "description": "Tested, source-linked Agent Skills for Indian GST, payments, IDs, and compliance.",
+  "owner": {
+    "name": "Shivanshu Sahu",
+    "url": "https://github.com/ShiSa25"
+  },
+  "plugins": [
+    {
+      "name": "india-agent-skills",
+      "description": "GST, payments, IDs, and compliance skills for Indian developers. Only gstin-validator is included until the other skills land.",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/gstin-validator"]
+    }
+  ]
+}

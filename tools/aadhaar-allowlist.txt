@@ -1,0 +1,6 @@
+# Synthetic Verhoeff specimens from SPEC §1.11. Not issued Aadhaar numbers.
+# scan-aadhaar.mjs ignores these exact 12-digit values and still flags any other
+# Verhoeff-valid 12-digit number in the repo.
+234123412346
+999999999999
+123456789010
