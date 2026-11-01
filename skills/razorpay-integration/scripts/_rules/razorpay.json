@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "domain": "razorpay",
+  "asOf": "2026-11-01",
+  "rules": [
+    {
+      "id": "razorpay.signature.algorithm",
+      "value": "HMAC-SHA256",
+      "unit": "algorithm",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/webhooks/validate-test/",
+      "verified": true,
+      "note": "Hex digest. Checkout message is order_id|payment_id with the key secret. Webhook message is the raw body with the webhook secret, header X-Razorpay-Signature. Do not change hex case. The Node sample on this page passes JSON.stringify(webhookBody); the same page says the body must be raw and must not be parsed or cast. This skill follows the raw-body warning."
+    },
+    {
+      "id": "razorpay.webhook.eventIdHeader",
+      "value": "x-razorpay-event-id",
+      "unit": "header",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/webhooks/validate-test/",
+      "verified": true,
+      "note": "Unique per event. Store it atomically and return 200 on a duplicate. At-least-once delivery."
+    },
+    {
+      "id": "razorpay.webhook.retryHours",
+      "value": 24,
+      "unit": "hours",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/webhooks/best-practices",
+      "verified": true,
+      "note": "A non-2xx response is retried with exponential backoff for 24 hours after the event creation timestamp. Continued failure disables the webhook."
+    },
+    {
+      "id": "razorpay.webhook.ackTimeoutSeconds",
+      "value": 5,
+      "unit": "seconds",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/webhooks/setup-edit-payments",
+      "verified": true,
+      "note": "The endpoint must return a 2xx within 5 seconds. A timeout is a failed delivery and is retried."
+    },
+    {
+      "id": "razorpay.capture.timeoutMinMinutes",
+      "value": 12,
+      "unit": "minutes",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/payments/payments/capture-settings",
+      "verified": true,
+      "note": "Minimum auto-capture timeout and minimum manual capture timeout. Payments still authorised after the timeout are auto-refunded."
+    },
+    {
+      "id": "razorpay.capture.timeoutDefaultMinutes",
+      "value": 4320,
+      "unit": "minutes",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/payments/payments/capture-settings",
+      "verified": true,
+      "note": "Default and maximum capture timeout is 3 days (4320 minutes). Authorised payments not captured within 3 days of creation are refunded automatically. Direct settlement merchants are auto-captured regardless of the dashboard setting. Normal auto-refund speed is 5-7 working days."
+    },
+    {
+      "id": "razorpay.fulfil.events",
+      "value": ["payment.captured", "order.paid"],
+      "unit": "event",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/webhooks/payments",
+      "verified": true,
+      "note": "payment.authorized is not fulfilment. Events can arrive out of order, including payment.captured before payment.authorized, and payment.failed followed by payment.captured on a UPI retry. Once captured, a later payment.authorized or payment.failed must not undo fulfilment."
+    },
+    {
+      "id": "razorpay.refund.events",
+      "value": ["refund.processed", "refund.failed"],
+      "unit": "event",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/webhooks/refunds",
+      "verified": true,
+      "note": "Only refund.processed moves the refunded total. refund.failed does not. refund.created does not, even though the published refund.created sample shows status processed. A partial refund must be less than or equal to captured minus already refunded. Auto-refunds of uncaptured payments have payload.payment.entity.captured false."
+    },
+    {
+      "id": "razorpay.amount.minimumSubunits",
+      "value": { "INR": 100 },
+      "unit": "subunits",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/api/orders/create",
+      "verified": true,
+      "note": "Orders API error is The amount must be at least INR 1.00, and the solution line says an amount equal to or greater than 100. The same accordion also says greater than 100; this skill uses greater than or equal to 100 so that ₹1.00 is accepted. No universal maximum is enforced: the Orders API says the maximum is the limit configured for the account or currency."
+    },
+    {
+      "id": "razorpay.amount.checkoutMinimumSubunits",
+      "value": { "USD": 50, "EUR": 50, "GBP": 30, "SGD": 50 },
+      "unit": "subunits",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/developer-tools/integrations/standard-checkout",
+      "verified": true,
+      "note": "Minimums printed on the standard checkout guide. The guide also shows a 50000000 subunit example maximum for INR; this skill does not enforce that figure because the Orders API describes the maximum as account-specific."
+    },
+    {
+      "id": "razorpay.currency.exponents",
+      "value": {
+        "0": ["BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW", "PYG", "RWF", "UGX", "VND", "VUV", "XAF", "XOF", "XPF"],
+        "2": ["AED", "ALL", "AMD", "AUD", "AWG", "AZN", "BAM", "BBD", "BDT", "BGN", "BMD", "BND", "BOB", "BRL", "BSD", "BTN", "BWP", "BZD", "CAD", "CHF", "CNY", "COP", "CRC", "CUP", "CVE", "CZK", "DKK", "DOP", "DZD", "EGP", "ETB", "EUR", "FJD", "GBP", "GHS", "GIP", "GMD", "GTQ", "GYD", "HKD", "HNL", "HRK", "HTG", "HUF", "IDR", "ILS", "INR", "JMD", "KES", "KGS", "KHR", "KYD", "KZT", "LAK", "LKR", "LRD", "LSL", "MAD", "MDL", "MGA", "MKD", "MMK", "MNT", "MOP", "MUR", "MVR", "MWK", "MXN", "MYR", "MZN", "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "PEN", "PGK", "PHP", "PKR", "PLN", "QAR", "RON", "RSD", "RUB", "SAR", "SCR", "SEK", "SGD", "SLL", "SOS", "SVC", "SZL", "THB", "TRY", "TTD", "TWD", "TZS", "UAH", "USD", "UYU", "UZS", "XCD", "YER", "ZAR", "ZMW"],
+        "3": ["BHD", "IQD", "JOD", "KWD", "OMR", "TND"]
+      },
+      "unit": "exponent",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/build/llm-docs/payments/international-payments.md",
+      "verified": true,
+      "note": "Exponent is the number of decimal places in the major-unit amount. Subunit count is that many digits. The orders page names JPY as the zero-decimal example and KWD, BHD and OMR as the three-decimal examples. IQD, JOD and TND are exponent 3 on this currency table, so the same trailing-zero rule applies."
+    },
+    {
+      "id": "razorpay.currency.trailingZero",
+      "value": true,
+      "unit": "boolean",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://razorpay.com/docs/api/orders/create",
+      "verified": true,
+      "note": "For every exponent-3 currency, the last subunit digit must be 0. 295.991 is sent as 295990 and 99.991 as 99990. This skill rejects a non-zero last digit unless zeroLastDigit is set, which zeros that digit and warns. The international-payments example that passes 99.999 KWD as 99999 contradicts this page; the orders page wins."
+    }
+  ]
+}

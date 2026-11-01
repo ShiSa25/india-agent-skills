@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "domain": "cashfree",
+  "asOf": "2026-11-01",
+  "rules": [
+    {
+      "id": "cashfree.webhook.algorithm",
+      "value": "Base64(HMAC-SHA256(timestamp + rawBody))",
+      "unit": "algorithm",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://www.cashfree.com/docs/api-reference/payments/latest/webhooks/signature-verification",
+      "verified": true,
+      "note": "x-webhook-signature is Base64 of HMAC-SHA256 over the x-webhook-timestamp header value concatenated with the raw body, with no separator. The HMAC key is the client secret. Partner webhooks use the partner API key. The signature page's worked timestamp is 1617695238078."
+    },
+    {
+      "id": "cashfree.webhook.versions",
+      "value": ["2025-01-01", "2026-01-01"],
+      "unit": "version",
+      "effectiveFrom": "2025-01-01",
+      "effectiveTo": null,
+      "source": "https://www.cashfree.com/docs/api-reference/payments/latest/payments/webhooks",
+      "verified": true,
+      "note": "Sample header tables for 2025-01-01 and 2026-01-01 both include x-webhook-signature, x-webhook-timestamp and x-idempotency-key. The 2023-08-01 sample omits x-idempotency-key. This skill accepts the two versions that publish that key."
+    },
+    {
+      "id": "cashfree.webhook.idempotencyHeader",
+      "value": "x-idempotency-key",
+      "unit": "header",
+      "effectiveFrom": "2025-01-01",
+      "effectiveTo": null,
+      "source": "https://www.cashfree.com/docs/api-reference/payments/previous/v2025-01-01/payments/webhooks",
+      "verified": true,
+      "note": "The 2025-01-01 header table names x-idempotency-key. The webhooks overview text says x-idempotency-header. This skill follows the header table."
+    },
+    {
+      "id": "cashfree.webhook.replayToleranceSeconds",
+      "value": 300,
+      "unit": "seconds",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://www.cashfree.com/docs/api-reference/payments/latest/subscription/webhook-signature",
+      "verified": true,
+      "note": "The Subscriptions signature page recommends a 5 minute replay window. The Payment Gateway signature page does not publish a number. This skill uses 300 seconds for PG webhooks as that recommendation. A timestamp 301 seconds off is rejected. The window is inclusive at 300 seconds."
+    },
+    {
+      "id": "cashfree.webhook.millisecondThreshold",
+      "value": "1000000000000",
+      "unit": "unix",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://www.cashfree.com/docs/api-reference/payments/latest/webhooks/signature-verification",
+      "verified": false,
+      "note": "UNVERIFIED as a Cashfree rule. Official samples are 13-digit milliseconds (1617695238078 on the signature page and 1746427759733 on the 2025-01-01 header table). Cashfree does not publish a seconds form. This skill treats a numeric timestamp greater than 1e12 as milliseconds and any smaller integer as seconds."
+    },
+    {
+      "id": "cashfree.fulfil.statuses",
+      "value": ["SUCCESS"],
+      "unit": "status",
+      "effectiveFrom": "2026-11-01",
+      "effectiveTo": null,
+      "source": "https://www.cashfree.com/docs/api-reference/payments/latest/webhooks/idempotency",
+      "verified": true,
+      "note": "Only payment_status SUCCESS is terminal. FAILED, NOT_ATTEMPTED and PENDING are not fulfilment. A later SUCCESS after FAILED still fulfils. A later FAILED does not undo a SUCCESS."
+    }
+  ]
+}
