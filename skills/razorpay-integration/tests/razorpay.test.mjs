@@ -226,6 +226,22 @@ describe('events', () => {
     const paid = decideRazorpayEvent({ ...base, event: 'order.paid', state: 'authorized' });
     assert.equal(paid.fulfil, true);
     assert.equal(decideRazorpayEvent({ ...base, event: 'payment.captured', state: 'captured' }).fulfil, false);
+    const mismatch = decideRazorpayEvent({
+      ...base,
+      event: 'payment.captured',
+      amountMinor: '50000',
+      expectedMinor: '100',
+    });
+    assert.equal(mismatch.fulfil, false);
+    assert.equal(mismatch.action, 'amount_mismatch');
+    const matched = decideRazorpayEvent({
+      ...base,
+      event: 'payment.captured',
+      amountMinor: '50000',
+      expectedMinor: '50000',
+    });
+    assert.equal(matched.fulfil, true);
+    assert.equal(matched.warnings.length, 0);
   });
 
   test('duplicate event id returns 200 and does not fulfil again', () => {
@@ -355,6 +371,9 @@ describe('handlers and evals', () => {
     assert.match(text, /parseAs: 'buffer'/);
     assert.match(text, /Do not pass `JSON\.stringify\(req\.body\)`/);
     assert.doesNotMatch(text, /\.update\(JSON\.stringify/);
+    assert.match(text, /server-side only/);
+    assert.match(text, /Return 200 only after/);
+    assert.doesNotMatch(text, /res\.status\(200\)\.end\(\);\n  const event/);
   });
 
   test('evals.json expectations match the scripts', () => {

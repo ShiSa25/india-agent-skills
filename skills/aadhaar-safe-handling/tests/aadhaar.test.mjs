@@ -138,11 +138,33 @@ describe('scanner', () => {
 
   test('an unlabelled 16-digit number is ignored and a labelled VID is masked', () => {
     assert.deepEqual(scanText('card 1234123412341234'), []);
+    assert.deepEqual(scanText('card 1234-1234-1234-1234'), []);
     const found = scanText('VID 1234-1234-1234-1234');
     assert.equal(found.length, 1);
     assert.equal(found[0].kind, 'vid');
     assert.equal(found[0].masked, 'XXXX XXXX XXXX 1234');
+    const dotted = scanText('virtual id 1234.1234.1234.1234');
+    assert.equal(dotted.length, 1);
+    assert.equal(dotted[0].kind, 'vid');
     assert.deepEqual(scanText('model User { aadhaarNumber String }'), []);
+  });
+
+  test('dots, commas, NBSP, dashes, Unicode digits, and a long line are masked', () => {
+    const forms = [
+      '2341.2341.2346',
+      '2341,2341,2346',
+      '2341  2341  2346',
+      '2341\u00A02341\u00A02346',
+      '2341\u20132341\u20132346',
+      SPECIMEN.replace(/\d/g, (digit) => String.fromCharCode(0x0966 + Number(digit))),
+      `${'x'.repeat(20_000)} ${SPECIMEN}`,
+    ];
+    for (const form of forms) {
+      const found = scanText(form);
+      assert.equal(found.length, 1, form);
+      assert.equal(found[0].masked, 'XXXX XXXX 2346');
+      assert.equal(JSON.stringify(found).includes(SPECIMEN), false);
+    }
   });
 
   test('scanPath reads a file and keeps the number out of the result', () => {
@@ -154,6 +176,13 @@ describe('scanner', () => {
     assert.equal(findings[0].file, 'app.log');
     assert.equal(findings[0].masked, 'XXXX XXXX 2346');
     assert.equal(JSON.stringify(findings).includes(SPECIMEN), false);
+
+    const named = mkdtempSync(join(tmpdir(), 'aadhaar-name-'));
+    writeFileSync(join(named, `${SPECIMEN}.txt`), 'hello\n');
+    const fromName = scanPath(named);
+    assert.equal(fromName.length, 1);
+    assert.equal(fromName[0].masked, 'XXXX XXXX 2346');
+    assert.equal(JSON.stringify(fromName).includes(SPECIMEN), false);
   });
 });
 

@@ -120,14 +120,16 @@ export function identifierWords(name) {
   const chars = [...name.normalize('NFKC')];
   for (let i = 0; i < chars.length; i += 1) {
     const c = chars[i];
-    if (c === '_' || c === '-' || c === ' ') {
+    const isUpper = c >= 'A' && c <= 'Z';
+    const isLower = c >= 'a' && c <= 'z';
+    const isDigit = c >= '0' && c <= '9';
+    if (!isUpper && !isLower && !isDigit) {
       if (cur) parts.push(cur);
       cur = '';
       continue;
     }
     const prev = i > 0 ? chars[i - 1] : '';
     const next = i + 1 < chars.length ? chars[i + 1] : '';
-    const isUpper = c >= 'A' && c <= 'Z';
     const prevLower = prev >= 'a' && prev <= 'z';
     const prevUpper = prev >= 'A' && prev <= 'Z';
     const nextLower = next >= 'a' && next <= 'z';
@@ -230,7 +232,7 @@ function scan(sourceText, columns, kind, asOf, used) {
       if (seen.has(key)) continue;
       seen.add(key);
       findings.push({
-        name: candidate.name,
+        name: safeLabel(candidate.name),
         line: candidate.line,
         where: candidate.where,
         kind: field.value.kind,
@@ -433,6 +435,11 @@ function stripComments(source) {
     i += 1;
   }
   return out;
+}
+
+function safeLabel(name) {
+  const cleaned = String(name).replace(/[^A-Za-z0-9_]/g, '').slice(0, 64);
+  return cleaned || 'field';
 }
 
 function leadingIdent(text) {

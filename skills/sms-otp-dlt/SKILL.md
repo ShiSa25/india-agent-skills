@@ -22,7 +22,7 @@ Check a commercial SMS template against the DLT rules this pack has sourced, and
 - A message contains a URL, an APK, an OTT link, or a callback number and you have a whitelist.
 - You need the MSG91 v5 OTP query (`template_id`, `mobile`, `otp_length`, `otp_expiry`) and a review of how the code generates the OTP.
 
-Do not use this skill to register a template on a DLT portal, to send traffic, or to store an authkey. Operator limits are warnings, not TRAI text.
+Do not use this skill to register a template on a DLT portal, to send traffic, or to store an authkey. The MSG91 authkey is server-side only. Do not put it in a browser bundle, a mobile app, a public env prefix, or the JSON you print. Operator limits are warnings, not TRAI text. Compare an OTP with `crypto.timingSafeEqual` after the buffers have the same length. Do not use `==` or `===` on the code, and do not log it or write it to a response.
 
 ## Quick start
 
@@ -126,7 +126,7 @@ Rules data is `scripts/_rules/trai.json`, as of 2026-11-01.
 - `21:00` IST is outside the default promotional window (the off band starts at 21:00). `10:00` is inside. A transactional template at 22:00 does not get the promotional warning.
 - `9800000000` in the message is a callback warning unless `callbackWhitelist` contains it. A 6-digit OTP is not a callback.
 - Passing `otp` into the MSG91 builder drops the value and warns. If `authkey` is set, the output says `<redacted>` and the process refuses to print the secret.
-- `Math.random`, or `console.log` of the OTP, fails `action: "review"`. `randomInt(0, 1000000)` without `padStart` warns that the code can be shorter than 6 digits.
+- `Math.random`, or `console.log` of the OTP (including `theOtp` or `otpCode`), fails `action: "review"`. So does `==` or `===` on an OTP value. `randomInt(0, 1000000)` without `padStart` warns that the code can be shorter than 6 digits. `timingSafeEqual` without a `.length` check warns, because it throws when the lengths differ.
 - Zero-width and bidi characters are rejected. Input over 10 KB is rejected. `sentAtIst` is `HH:MM` in IST. A `sentAt` value is read only when it contains `+05:30`, and the clock time is taken from the string.
 
 ## Disclaimer

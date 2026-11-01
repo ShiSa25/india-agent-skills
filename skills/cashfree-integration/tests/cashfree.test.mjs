@@ -276,6 +276,39 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(jsonDecimalToken(raw, 'payment_amount'), '170.00');
     assert.equal(jsonDecimalToken(raw, 'other'), '170');
     assert.equal(JSON.parse(raw).payment_amount, 170);
+    assert.equal(jsonDecimalToken('{"payment_amount":1e2}', 'payment_amount'), null);
+    assert.equal(jsonDecimalToken('{"payment_amount":1E+2}', 'payment_amount'), null);
+  });
+
+  test('the replay window cannot be widened and the amount must match', () => {
+    assert.throws(
+      () => verifyCashfreeWebhook({
+        rawBody: BODY,
+        timestamp: DOC_TS,
+        signature: sign(DOC_TS, BODY),
+        secret: SECRET,
+        nowMs: Number(DOC_TS),
+        toleranceSec: 301,
+      }),
+      /cannot exceed 300/,
+    );
+    const mismatch = decideCashfreeEvent({
+      ...base,
+      paymentStatus: 'SUCCESS',
+      paymentAmount: '170.00',
+      expectedAmount: '1.00',
+    });
+    assert.equal(mismatch.fulfil, false);
+    assert.equal(mismatch.action, 'amount_mismatch');
+    assert.equal(mismatch.priorStatus, 'none');
+    const matched = decideCashfreeEvent({
+      ...base,
+      paymentStatus: 'SUCCESS',
+      paymentAmount: '170.00',
+      expectedAmount: '170',
+    });
+    assert.equal(matched.fulfil, true);
+    assert.equal(matched.warnings.some((warning) => warning.includes('expectedAmount')), false);
   });
 });
 
@@ -287,6 +320,10 @@ describe('handlers and evals', () => {
     assert.match(text, /parseAs: 'buffer'/);
     assert.match(text, /Do not pass `JSON\.stringify\(req\.body\)`/);
     assert.match(text, /x-webhook-timestamp/);
+    assert.match(text, /server-side only/);
+    assert.match(text, /Return 200 only after/);
+    assert.doesNotMatch(text, /result\.reason/);
+    assert.doesNotMatch(text, /res\.status\(200\)\.end\(\);\n  const event/);
     assert.doesNotMatch(text, /\.update\(JSON\.stringify/);
   });
 

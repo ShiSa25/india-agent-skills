@@ -258,18 +258,51 @@ export function decideRazorpayEvent(input) {
     const amount = optionalMinor(input.amountMinor, 'amountMinor');
     const nextCaptured = amount === null ? captured : amount;
     const already = state === 'captured' || state === 'refunded';
+    if (!already) {
+      const expected = optionalMinor(input.expectedMinor, 'expectedMinor');
+      if (expected !== null && expected !== nextCaptured) {
+        return decision(domain, rules, {
+          ...base,
+          valid: false,
+          httpStatus: 200,
+          action: 'amount_mismatch',
+          fulfil: false,
+          duplicate: false,
+          storeEventId: true,
+          errors: ['amountMinor does not match expectedMinor. Do not ship.'],
+          warnings: [],
+        });
+      }
+      const warnings = [];
+      if (expected === null) {
+        warnings.push('expectedMinor was not passed. Compare the captured amount with the order amount stored on your server before shipping.');
+      }
+      return decision(domain, rules, {
+        ...base,
+        valid: true,
+        httpStatus: 200,
+        action: 'fulfil',
+        fulfil: true,
+        duplicate: false,
+        storeEventId: true,
+        state: 'captured',
+        capturedMinor: nextCaptured.toString(),
+        errors: [],
+        warnings,
+      });
+    }
     return decision(domain, rules, {
       ...base,
       valid: true,
       httpStatus: 200,
-      action: already ? 'already_fulfilled' : 'fulfil',
-      fulfil: !already,
+      action: 'already_fulfilled',
+      fulfil: false,
       duplicate: false,
       storeEventId: true,
       state: state === 'refunded' ? 'refunded' : 'captured',
       capturedMinor: nextCaptured.toString(),
       errors: [],
-      warnings: already ? ['payment is already fulfilled; do not ship again'] : [],
+      warnings: ['payment is already fulfilled; do not ship again'],
     });
   }
   if (eventName.value === 'payment.authorized') {

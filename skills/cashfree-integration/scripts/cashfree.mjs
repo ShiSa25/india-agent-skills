@@ -4,6 +4,7 @@
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { disclaimer, CONFIRM_SENTENCE } from './_lib/disclaimer.mjs';
+import { parseAmount } from './_lib/money.mjs';
 import { loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
 
 const FIELD_MAX = 10 * 1024;
@@ -56,9 +57,16 @@ export function verifyCashfreeWebhook(input) {
       errors: ['signature mismatch'],
     });
   }
-  const toleranceSec = input.toleranceSec === undefined ? toleranceRule.value : input.toleranceSec;
+  const cap = toleranceRule.value;
+  if (typeof cap !== 'number' || !Number.isInteger(cap) || cap < 0) {
+    throw new UsageError('replay tolerance rule is not a non-negative integer');
+  }
+  const toleranceSec = input.toleranceSec === undefined ? cap : input.toleranceSec;
   if (typeof toleranceSec !== 'number' || !Number.isInteger(toleranceSec) || toleranceSec < 0) {
     throw new UsageError('toleranceSec must be a non-negative integer');
+  }
+  if (toleranceSec > cap) {
+    throw new UsageError(`toleranceSec cannot exceed ${cap}. Do not copy it from the webhook body.`);
   }
   if (input.nowMs === undefined) throw new UsageError('nowMs is required');
   const now = clockMs(input.nowMs);
@@ -116,6 +124,7 @@ export function jsonDecimalToken(rawBody, field) {
     while (isDigit(text[i])) i += 1;
     if (i === fraction) return null;
   }
+  if (text[i] === 'e' || text[i] === 'E') return null;
   return text.slice(start, i);
 }
 
@@ -199,15 +208,29 @@ export function decideCashfreeEvent(input) {
   const already = prior === 'SUCCESS';
   let action = 'record';
   let fulfil = false;
+  let valid = true;
+  let httpStatus = 200;
   let next = status.value;
+  const errors = [];
   const warnings = [];
   if (success && already) {
     action = 'already_fulfilled';
     warnings.push('payment is already SUCCESS; do not ship again');
   } else if (success) {
-    action = 'fulfil';
-    fulfil = true;
-    next = 'SUCCESS';
+    const amountCheck = comparePaymentAmount(input);
+    if (amountCheck === 'mismatch') {
+      action = 'amount_mismatch';
+      valid = false;
+      next = prior;
+      errors.push('paymentAmount does not match expectedAmount. Do not ship.');
+    } else {
+      action = 'fulfil';
+      fulfil = true;
+      next = 'SUCCESS';
+      if (amountCheck === 'missing') {
+        warnings.push('expectedAmount was not passed. Compare payment_amount from the verified raw body with the order amount stored on your server before shipping.');
+      }
+    }
   } else if (already) {
     action = 'ignore_late';
     next = 'SUCCESS';
@@ -217,8 +240,8 @@ export function decideCashfreeEvent(input) {
     warnings.push('only payment_status SUCCESS is fulfilment');
   }
   return decision(domain, rules, {
-    valid: true,
-    httpStatus: 200,
+    valid,
+    httpStatus,
     action,
     fulfil,
     duplicate: false,
@@ -226,9 +249,34 @@ export function decideCashfreeEvent(input) {
     priorStatus: next,
     paymentStatus: status.value,
     idempotencyHeader: headerRule.value,
-    errors: [],
+    errors,
     warnings,
   });
+}
+
+function comparePaymentAmount(input) {
+  const payment = input.paymentAmount;
+  const expected = input.expectedAmount;
+  if (payment === undefined && expected === undefined) return 'missing';
+  if (payment === undefined || expected === undefined) {
+    throw new UsageError('Pass both paymentAmount and expectedAmount, or neither. Use decimal strings.');
+  }
+  let left;
+  let right;
+  try {
+    left = parseAmount(requireDecimal(payment, 'paymentAmount'));
+    right = parseAmount(requireDecimal(expected, 'expectedAmount'));
+  } catch (error) {
+    if (error instanceof UsageError) throw error;
+    throw new UsageError(error.message);
+  }
+  return left === right ? 'match' : 'mismatch';
+}
+
+function requireDecimal(value, label) {
+  if (typeof value === 'number') throw new UsageError(`${label} must be a decimal string, not a JSON number`);
+  if (typeof value !== 'string') throw new UsageError(`${label} must be a decimal string`);
+  return value.trim();
 }
 
 function signedPayload(timestamp, rawBody) {
