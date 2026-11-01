@@ -1,0 +1,75 @@
+{
+  "skill": "upi-payment-links",
+  "evals": [
+    {
+      "id": "shiv-and-co",
+      "prompt": "UPI link for merchant@upi, name \"Shiv & Co\", amount 499.00, plus a QR.",
+      "expect": {
+        "op": "build",
+        "input": { "pa": "merchant@upi", "pn": "Shiv & Co", "am": "499.00" },
+        "valid": true,
+        "confirm": true,
+        "channel": "p2p",
+        "amountPaise": "49900",
+        "pa": "merchant@upi",
+        "pn": "Shiv & Co",
+        "am": "499.00",
+        "cu": "INR",
+        "linkIncludes": "pn=Shiv%20%26%20Co",
+        "warningIncludes": "Unsigned links are for P2P or personal use."
+      }
+    },
+    {
+      "id": "too-many-decimals",
+      "prompt": "Make a UPI link to shop@okbank named Shop for amount 10.999.",
+      "expect": {
+        "op": "build",
+        "input": { "pa": "shop@okbank", "pn": "Shop", "am": "10.999" },
+        "valid": false,
+        "errorIncludes": "decimal"
+      }
+    },
+    {
+      "id": "usd",
+      "prompt": "UPI link for shop@okbank named Shop, 10 rupees, currency USD.",
+      "expect": {
+        "op": "build",
+        "input": { "pa": "shop@okbank", "pn": "Shop", "am": "10", "cu": "USD" },
+        "valid": false,
+        "errorIncludes": "INR"
+      }
+    },
+    {
+      "id": "missing-pa",
+      "prompt": "Build a UPI link with only the name Shop.",
+      "expect": {
+        "op": "build",
+        "input": { "pn": "Shop" },
+        "valid": false,
+        "errorIncludes": "pa is required"
+      }
+    },
+    {
+      "id": "p2p-above-cap",
+      "prompt": "UPI link to friend@okbank named Friend for 100000.01 rupees. Do not block it if it is over the cap; warn me.",
+      "expect": {
+        "op": "build",
+        "input": { "pa": "friend@okbank", "pn": "Friend", "am": "100000.01" },
+        "valid": true,
+        "channel": "p2p",
+        "warningIncludes": "P2P per-transaction cap"
+      }
+    },
+    {
+      "id": "qr-round-trip",
+      "prompt": "QR for a UPI link to shop@okbank named Cafe, amount 10.50, and tell me the SVG still decodes to that link.",
+      "expect": {
+        "op": "qr",
+        "input": { "op": "qr", "pa": "shop@okbank", "pn": "Cafe", "am": "10.50" },
+        "valid": true,
+        "ecc": "M",
+        "linkIncludes": "am=10.50"
+      }
+    }
+  ]
+}

@@ -523,6 +523,324 @@
       "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter10/rule96a_v1.00.html",
       "verified": true,
       "note": "Rule 96A(6): sub-rule (1) applies mutatis mutandis to a zero-rated supply to an SEZ developer or SEZ unit without payment of integrated tax."
+    },
+    {
+      "id": "gst.invoice.number.pattern",
+      "value": "^[A-Za-z0-9/-]{1,16}$",
+      "unit": "regex",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html",
+      "verified": true,
+      "note": "CGST Rule 46(b), opened 2026-11-01. Letters, digits, hyphen, and slash. At most 16 characters. Unique in a financial year. The series must be consecutive; this pack cannot see the supplier's books."
+    },
+    {
+      "id": "gst.invoice.number.maxChars",
+      "value": 16,
+      "unit": "chars",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html",
+      "verified": true,
+      "note": "CGST Rule 46(b)."
+    },
+    {
+      "id": "gst.invoice.number.rejectLiterals",
+      "value": [
+        "0"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED GSTN advisory: reject the invoice number 0. SPEC §1.2. Not in the Rule 46 text that was opened."
+    },
+    {
+      "id": "gst.invoice.number.rejectSlashOnly",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED GSTN advisory: reject a number made only of slashes. SPEC §1.2."
+    },
+    {
+      "id": "gst.invoice.number.leadingRejectedByIrp",
+      "value": [
+        "0",
+        "/",
+        "-"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED. Secondary IRP API notes reject a document number that starts with 0, / or -. Rule 46 does not. Warn, do not reject, except for the exact values in the other two rules."
+    },
+    {
+      "id": "gst.invoice.endorsement.withoutPayment",
+      "value": "SUPPLY MEANT FOR EXPORT/SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html",
+      "verified": true,
+      "note": "CGST Rule 46 export proviso, opened 2026-11-01. Byte-exact."
+    },
+    {
+      "id": "gst.invoice.endorsement.withPayment",
+      "value": "SUPPLY MEANT FOR EXPORT/SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS ON PAYMENT OF INTEGRATED TAX",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html",
+      "verified": true,
+      "note": "CGST Rule 46 export proviso, opened 2026-11-01. Byte-exact."
+    },
+    {
+      "id": "gst.invoice.utgstStateCodes",
+      "value": [
+        "04",
+        "26",
+        "31",
+        "35",
+        "38"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.cbic.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED against the gazette. SPEC §1.2: Chandigarh, Dadra and Nagar Haveli and Daman and Diu, Lakshadweep, Andaman and Nicobar, Ladakh. Code 97 Other Territory is also a Union territory in the UTGST Act and is not in this list."
+    },
+    {
+      "id": "gst.invoice.rates.knownBp",
+      "value": [
+        0,
+        10,
+        25,
+        150,
+        300,
+        500,
+        1200,
+        1800,
+        2800
+      ],
+      "unit": "bp",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html",
+      "verified": true,
+      "note": "Examples named in SPEC §1.2, in basis points: 0, 0.1%, 0.25%, 1.5%, 3%, 5%, 12%, 18%, 28%. A rate is never inferred from an HSN. Any other non-negative rate is accepted with a warning."
+    },
+    {
+      "id": "gst.invoice.rates.unusual",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.cbic.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED. GST 2.0 (22 Sep 2025) is said to have moved many goods to 5, 18, and 40 percent. Do not reject a rate outside gst.invoice.rates.knownBp. Warn and set confirm."
+    },
+    {
+      "id": "gst.invoice.unregistered.thresholdPaise",
+      "value": 5000000,
+      "unit": "paise",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html",
+      "verified": true,
+      "note": "Rule 46(e): ₹50,000. An unregistered recipient at or above this taxable value needs name, address, delivery address, and the state name and code."
+    },
+    {
+      "id": "gst.invoice.signature.electronic",
+      "value": "Electronic invoice under the Information Technology Act, 2000 (signature not required).",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html",
+      "verified": true,
+      "note": "Rule 46 proviso: no signature on an electronic invoice issued under the Information Technology Act, 2000."
+    },
+    {
+      "id": "gst.invoice.sez.interState",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapteriv/section7_v1.00.html",
+      "verified": true,
+      "note": "IGST section 7(5)(b) and section 8 proviso, opened 2026-11-01. A supply to or by an SEZ unit or developer is inter-state even when the states match. Integrated tax, not CGST and SGST."
+    },
+    {
+      "id": "gst.invoice.service.placeOfSupply",
+      "value": "recipient",
+      "unit": "rule",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/documents/Integrated_Goods_And_Services_Tax_Act,_2017_27-March-2020.html",
+      "verified": true,
+      "note": "IGST section 12(2), opened 2026-11-01: registered recipient, their location; unregistered, address on record, otherwise the supplier. Section 13(2) when either party is outside India: the recipient, unless that location is not available. Sections 12(3) to 12(14) and 13(3) to 13(13) are exceptions. Infer only when the user does not pass placeOfSupply, and warn."
+    },
+    {
+      "id": "gst.invoice.round.halfUpPaise",
+      "value": 50,
+      "unit": "paise",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter21/section170_v1.00.html",
+      "verified": true,
+      "note": "CGST section 170, opened 2026-11-01. Fifty paise or more rounds up to the next rupee. Each tax head rounds separately. The invoice still shows paise. An optional roundOff line rounds the grand total."
+    },
+    {
+      "id": "gst.einvoice.version",
+      "value": "1.1",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/uiassets/js/assets/files/60%20of%202020%20Dt.%2030-7-2020%20-%20Revised%20schema%201.1%20notified.pdf",
+      "verified": true,
+      "note": "Notification 60/2020 schema. The older draft PDF is marked 1.00. Emit 1.1."
+    },
+    {
+      "id": "gst.einvoice.taxScheme",
+      "value": "GST",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/uiassets/js/assets/files/60%20of%202020%20Dt.%2030-7-2020%20-%20Revised%20schema%201.1%20notified.pdf",
+      "verified": true,
+      "note": "TranDtls.TaxSch."
+    },
+    {
+      "id": "gst.einvoice.supplyTypes",
+      "value": [
+        "B2B",
+        "SEZWP",
+        "SEZWOP",
+        "EXPWP",
+        "EXPWOP",
+        "DEXP"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/uiassets/js/assets/files/60%20of%202020%20Dt.%2030-7-2020%20-%20Revised%20schema%201.1%20notified.pdf",
+      "verified": true,
+      "note": "Schema 1.1 supply type codes. B2C is not emitted."
+    },
+    {
+      "id": "gst.einvoice.documentTypes",
+      "value": [
+        "INV",
+        "CRN",
+        "DBN"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/uiassets/js/assets/files/60%20of%202020%20Dt.%2030-7-2020%20-%20Revised%20schema%201.1%20notified.pdf",
+      "verified": true,
+      "note": "Invoice, credit note, debit note."
+    },
+    {
+      "id": "gst.einvoice.export.gstin",
+      "value": "URP",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/uiassets/js/assets/files/60%20of%202020%20Dt.%2030-7-2020%20-%20Revised%20schema%201.1%20notified.pdf",
+      "verified": true,
+      "note": "Notification 60/2020 schema, recipient GSTIN note, opened 2026-11-01: URP for exports or supplies to unregistered persons. SPEC §1.3 called this secondary; the notified schema text that was opened names URP."
+    },
+    {
+      "id": "gst.einvoice.export.pos",
+      "value": "96",
+      "unit": "code",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice1.gst.gov.in/Others/MasterCodes",
+      "verified": true,
+      "note": "Other Countries. Place of supply and state code for an export buyer. MasterCodes opened 2026-11-01."
+    },
+    {
+      "id": "gst.einvoice.export.pin",
+      "value": "999999",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED. IRP practice for an export buyer PIN. Notification 60/2020 says the recipient PIN need not be mentioned on an export. Emit 999999 and set confirm."
+    },
+    {
+      "id": "gst.einvoice.aato.mandatory",
+      "value": {
+        "abovePaise": 5000000000,
+        "from": "2023-08-01"
+      },
+      "unit": "paise",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://tutorial.gst.gov.in/einvoice/files/Notification_No._10_2023.pdf",
+      "verified": true,
+      "note": "Notification 10/2023-Central Tax, opened 2026-11-01, substitutes five crore rupees with effect from 1 Aug 2023. Mandatory when AATO exceeds this figure (strictly greater) in any preceding FY from 2017-18. The \"exceeds\" and \"any preceding FY\" words are the principal notification 13/2020 as amended."
+    },
+    {
+      "id": "gst.einvoice.reporting",
+      "value": {
+        "fromPaise": 10000000000,
+        "from": "2025-04-01",
+        "blockWhenAgeDaysAtLeast": 30
+      },
+      "unit": "policy",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice1.gst.gov.in/Documents/advisory270325.pdf",
+      "verified": true,
+      "note": "GSTN advisory opened 2026-11-01 (advisory 543 of 5 Nov 2024, copy at einvoice1). From 1 Apr 2025, AATO of ₹10 crore or more cannot report an invoice, credit note, or debit note older than 30 days. The advisory example: an invoice dated 1 Apr 2025 cannot be reported after 30 Apr 2025. Warn when the reporting date is 30 or more civil days after the document date. Applies to INV, CRN, and DBN."
+    },
+    {
+      "id": "gst.einvoice.roundingTolerancePaise",
+      "value": 100,
+      "unit": "paise",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/uiassets/js/assets/files/60%20of%202020%20Dt.%2030-7-2020%20-%20Revised%20schema%201.1%20notified.pdf",
+      "verified": true,
+      "note": "SPEC §1.3. Header and item totals may differ by at most ₹1, and only as a warning. A larger gap is an error. This skill does not treat the tolerance as permission to submit."
+    },
+    {
+      "id": "gst.einvoice.irnCancelHours",
+      "value": 24,
+      "unit": "hours",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://einvoice.gst.gov.in/",
+      "verified": false,
+      "note": "UNVERIFIED. IRP documentation describes IRN cancellation within 24 hours. Warn and set confirm. Do not block the payload."
+    },
+    {
+      "id": "gst.einvoice.exemptClasses",
+      "value": [
+        "sez-unit",
+        "insurer",
+        "bank",
+        "nbfc",
+        "gta",
+        "passenger-transport",
+        "multiplex"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://tutorial.gst.gov.in/einvoice/files/Notification_No._10_2023.pdf",
+      "verified": false,
+      "note": "UNVERIFIED list from SPEC §1.3. Notification 13/2020 as amended, seen in a compilation, also excludes a government department, a local authority, an SEZ unit, and rule 54(2), (3), (4) and (4A) (insurer, bank/NBFC, GTA, passenger transport, multiplex). Print \"may be exempt — confirm\". Do not clear the turnover test."
     }
   ]
 }

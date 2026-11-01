@@ -1,0 +1,99 @@
+{
+  "skill": "sms-otp-dlt",
+  "evals": [
+    {
+      "id": "good-otp-template",
+      "prompt": "Lint this DLT OTP template: header ACMEIN-T, transactional, brand Acme, body Your OTP is {#var#}. Do not share it. - Acme",
+      "expect": {
+        "input": {
+          "asOf": "2026-11-01",
+          "template": "Your OTP is {#var#}. Do not share it. - Acme",
+          "message": "Your OTP is 482913. Do not share it. - Acme",
+          "variables": ["482913"],
+          "header": "ACMEIN-T",
+          "category": "transactional",
+          "brandName": "Acme",
+          "chainRegistered": true,
+          "templateRegistered": true,
+          "sentAtIst": "16:30"
+        },
+        "valid": true
+      }
+    },
+    {
+      "id": "url-not-whitelisted",
+      "prompt": "The SMS says Pay Acme at https://pay.example/x today. The URL is not on the DLT whitelist. Can I send it?",
+      "expect": {
+        "input": {
+          "asOf": "2026-11-01",
+          "template": "Pay Acme at {#var#} today",
+          "message": "Pay Acme at https://pay.example/x today",
+          "variables": ["https://pay.example/x"],
+          "header": "ACMEIN-T",
+          "category": "transactional",
+          "brandName": "Acme",
+          "whitelist": [],
+          "chainRegistered": true,
+          "templateRegistered": true
+        },
+        "valid": false,
+        "errorIncludes": "not in the whitelist"
+      }
+    },
+    {
+      "id": "variable-last",
+      "prompt": "Is this DLT template acceptable if the variable is the last word: Acme code is {#var#}",
+      "expect": {
+        "input": {
+          "asOf": "2026-11-01",
+          "template": "Acme code is {#var#}",
+          "message": "Acme code is 482913",
+          "variables": ["482913"],
+          "header": "ACMEIN-T",
+          "category": "transactional",
+          "brandName": "Acme",
+          "chainRegistered": true,
+          "templateRegistered": true
+        },
+        "valid": true,
+        "warningIncludes": "last word"
+      }
+    },
+    {
+      "id": "promo-night",
+      "prompt": "Can I send a promotional SMS at 22:00 IST?",
+      "expect": {
+        "input": {
+          "asOf": "2026-11-01",
+          "template": "Acme sale {#var#}. Reply STOP",
+          "message": "Acme sale 10. Reply STOP",
+          "variables": ["10"],
+          "header": "ACMEIN-P",
+          "category": "promotional",
+          "brandName": "Acme",
+          "chainRegistered": true,
+          "templateRegistered": true,
+          "sentAtIst": "22:00"
+        },
+        "valid": true,
+        "warningIncludes": "10:00"
+      }
+    },
+    {
+      "id": "msg91-shape",
+      "prompt": "Show the MSG91 SendOTP request for template tpl_otp_01 to 919800000000 with a 6-digit code and a 10 minute expiry. Do not call the API.",
+      "expect": {
+        "script": "otp",
+        "input": {
+          "asOf": "2026-11-01",
+          "templateId": "tpl_otp_01",
+          "mobile": "919800000000",
+          "otpLength": 6,
+          "otpExpiryMinutes": 10
+        },
+        "valid": true,
+        "query": { "otp_length": "6" }
+      }
+    }
+  ]
+}

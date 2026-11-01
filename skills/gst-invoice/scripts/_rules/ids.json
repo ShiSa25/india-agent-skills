@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "domain": "ids",
+  "asOf": "2026-11-01",
+  "rules": [
+    {
+      "id": "ids.pan.pattern",
+      "value": "^[A-Z]{3}[ABCFGHJLPT][A-Z][0-9]{4}[A-Z]$",
+      "unit": "regex",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": true,
+      "note": "4th character is the holder type: A AOP, B BOI, C company, F firm or LLP, G government, H HUF, J artificial juridical person, L local authority, P individual, T trust. No public checksum on the 10th character. SPEC §1.10. Not in the open UNVERIFIED list."
+    },
+    {
+      "id": "ids.tan.pattern",
+      "value": "^[A-Z]{4}[0-9]{5}[A-Z]$",
+      "unit": "regex",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://www.incometaxindia.gov.in/",
+      "verified": true,
+      "note": "TAN shape required for a TDS GSTIN body. SPEC §1.1 and §1.10."
+    }
+  ]
+}
