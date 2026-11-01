@@ -1,0 +1,4 @@
+{
+  "lib": ["disclaimer.mjs", "money.mjs", "rules.mjs"],
+  "rules": ["razorpay.json"]
+}
