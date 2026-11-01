@@ -8,7 +8,8 @@
   "plugins": [
     {
       "name": "india-agent-skills",
-      "description": "v0.1.0. Thirteen skills for Indian GST, payments, IDs, and compliance. Descriptions are the SKILL.md frontmatter in each folder. Tax and legal output is an aid: confirm it with the official source or a professional.",
+      "version": "0.1.1",
+      "description": "v0.1.1. Thirteen skills for Indian GST, payments, IDs, and compliance. Descriptions are the SKILL.md frontmatter in each folder. Tax and legal output is an aid: confirm it with the official source or a professional.",
       "source": "./",
       "strict": false,
       "skills": [

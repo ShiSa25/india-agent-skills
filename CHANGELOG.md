@@ -1,16 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 — 2026-11-01
 
-Security fixes from the pre-launch review. No rule values changed.
+Security patch on the 0.1.0 pack. No rule values changed. The same 13 skills are at metadata version 0.1.1.
 
 - Aadhaar scans fold Unicode digits, zero-width marks, and grouped separators (dot, comma, NBSP, dash). Long lines are scanned. Paths in the result are masked. The repo scanner uses the same fold and covers more text extensions.
-- Cashfree `toleranceSec` cannot exceed the rules-file window. `jsonDecimalToken` returns null on exponent notation instead of a truncated number. `expectedAmount` must match before fulfilment.
+- DPDP findings label a column with letters, digits, and underscores only, capped at 64 characters.
+- Cashfree `toleranceSec` cannot exceed the rules-file window. `expectedAmount` must match before fulfilment.
 - Razorpay fulfilment compares `expectedMinor` when it is passed.
+- Webhook samples for Razorpay and Cashfree return 200 only after the idempotency transaction. Signing secrets and the MSG91 authkey stay on the server.
 - OTP review rejects `==` / `===` and a broader set of log and response writes. An MSG91 authkey is redacted by walking values, not by searching the JSON text.
 - IFSC lookup caps the body, checks an echoed IFSC, and drops directory fields that are not short plain text.
-- Webhook samples return 200 only after the idempotency transaction, and they say that secrets stay on the server.
-- `pct` rejects a negative rate. Link check does not follow a redirect onto a non-public or non-https URL. GitHub Actions are pinned to commits.
+- `pct` rejects a negative rate. `jsonDecimalToken` returns null on exponent notation instead of a truncated number.
+- Link check does not follow a redirect onto a non-public or non-https URL.
+- `SECURITY.md` says how to report a vulnerability. Dependabot checks GitHub Actions weekly.
+- GitHub Actions are pinned to commits. `actions/checkout` is v7.0.1. `actions/setup-node` is v7.1.0.
 
 ## 0.1.0 — 2026-11-01
 
