@@ -376,6 +376,155 @@
       "note": "Exact warning for state codes 25 and 28."
     },
     {
+      "id": "gst.export.service.conditions",
+      "value": [
+        "the supplier of service is located in India",
+        "the recipient of service is located outside India",
+        "the place of supply of service is outside India",
+        "the payment for such service has been received by the supplier of service in convertible foreign exchange or in Indian rupees wherever permitted by the Reserve Bank of India",
+        "the supplier of service and the recipient of service are not merely establishments of a distinct person in accordance with Explanation 1 in section 8"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2019-02-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapteri/section2_v1.00.html",
+      "verified": true,
+      "note": "IGST Act s.2(6), all five limbs. Limb (iv) includes Indian rupees wherever permitted by the RBI. Text read 2026-11-01 from the CBIC repository. A direct fetch of the HTML timed out; the repository text returned by search is what was read. All five must hold. An LUT is not one of them."
+    },
+    {
+      "id": "gst.export.inrWarning",
+      "value": "check whether RBI permits; may fail s.2(6)(iv)",
+      "unit": "text",
+      "effectiveFrom": "2019-02-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapteri/section2_v1.00.html",
+      "verified": true,
+      "note": "Shown when the invoice currency is INR. Permission is a fact about the payment, not a rate."
+    },
+    {
+      "id": "gst.igst.placeOfSupply.general",
+      "value": "recipient",
+      "unit": "location",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapterv/section13_v1.00.html",
+      "verified": true,
+      "note": "IGST s.13(2): except the services in s.13(3) to s.13(13), place of supply is the location of the recipient. Repository text read 2026-11-01."
+    },
+    {
+      "id": "gst.igst.intermediary.warning",
+      "value": "intermediary services may not qualify",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapterv/section13_v1.00.html",
+      "verified": true,
+      "note": "Exact warning. Intermediary is IGST s.2(13): a broker, agent, or other person who arranges or facilitates a supply between two or more persons, and not a person who supplies on their own account."
+    },
+    {
+      "id": "gst.igst.intermediary.placeOfSupply",
+      "value": "supplier",
+      "unit": "location",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": "2026-03-29",
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapterv/section13_v1.00.html",
+      "verified": true,
+      "note": "IGST s.13(8)(b) before its omission: place of supply of intermediary services is the location of the supplier. If that location is in India, s.2(6)(iii) fails."
+    },
+    {
+      "id": "gst.igst.intermediary.omitted",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2026-03-30",
+      "effectiveTo": null,
+      "source": "https://egazette.gov.in/WriteReadData/2026/271439.pdf",
+      "verified": true,
+      "note": "Finance Act, 2026 (No. 4 of 2026), Gazette CG-DL-E-31032026-271439, assented 30 Mar 2026. Section 157 omits IGST s.13(8)(b). Section 1(2) brings sections 2 to 129, s.152(b), and s.156 into force on 1 Apr 2026, and ss.153 to 155 on a notified date. Section 157 is in neither list, so it takes effect on the assent date, 30 Mar 2026. From that date s.13(2) applies unless another s.13(3) to s.13(13) exception applies. The CBIC HTML for s.13 still showed clause (b) when it was read; the Gazette is the amending Act."
+    },
+    {
+      "id": "gst.igst.s13.otherExceptions",
+      "value": "Other IGST s.13(3) to s.13(13) rules can still put the place of supply in India, including services performed on goods or on a person who is present, services tied to immovable property or an event, banking and NBFC services to account holders, and hiring of a means of transport for up to one month.",
+      "unit": "text",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/active/chapterv/section13_v1.00.html",
+      "verified": true,
+      "note": "Shown with every checklist. The omission of s.13(8)(b) does not remove the other exceptions."
+    },
+    {
+      "id": "gst.zeroRated.options",
+      "value": [
+        "bond or letter of undertaking, without payment of integrated tax, with a refund of unutilised input tax credit",
+        "on payment of integrated tax, with a refund of the tax paid"
+      ],
+      "unit": "list",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://gstcouncil.gov.in/sites/default/files/2024-03/annexure-5-igst-act%5F2017.pdf",
+      "verified": true,
+      "note": "IGST s.16(1) and s.16(3). Zero-rated supplies are exports and supplies to an SEZ developer or SEZ unit. The PDF is the Council compilation read 2026-11-01. Later amendments have narrowed some refunds; the two routes are still the ones s.16(3) states in that text."
+    },
+    {
+      "id": "gst.lut.form",
+      "value": "GST RFD-11",
+      "unit": "form",
+      "effectiveFrom": "2017-10-04",
+      "effectiveTo": null,
+      "source": "https://tutorial.gst.gov.in/userguide/refund/Furnishing_of_Letter_of_Undertaking_for_Export_of_Goods_or_Services.htm",
+      "verified": true,
+      "note": "GST portal tutorial, read 2026-11-01. LUT is furnished in Form GST RFD-11 before the zero-rated supply. It is how a person supplies without paying IGST. It is not part of the definition of export."
+    },
+    {
+      "id": "gst.lut.tiedToInvoiceFy",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2017-10-04",
+      "effectiveTo": null,
+      "source": "https://tutorial.gst.gov.in/userguide/refund/Furnishing_of_Letter_of_Undertaking_for_Export_of_Goods_or_Services.htm",
+      "verified": true,
+      "note": "The tutorial says the taxpayer selects the financial year for which the LUT is filed. A LUT filed for one FY does not cover an invoice in the next FY. 31 Mar and 1 Apr are different financial years."
+    },
+    {
+      "id": "gst.rule96a.oneYear",
+      "value": 1,
+      "unit": "year",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter10/rule96a_v1.00.html",
+      "verified": true,
+      "note": "CGST Rule 96A(1)(b), text read 2026-11-01. One limb of the services period is one year from the invoice date."
+    },
+    {
+      "id": "gst.rule96a.useLaterOfFema",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter10/rule96a_v1.00.html",
+      "verified": true,
+      "note": "Rule 96A(1)(b): fifteen days after the expiry of one year, or the period allowed under FEMA including any RBI extension, whichever is later, from the invoice date. The receipt deadline used here is the later of the one-year date and the FEMA date. The exporter then has the further days in gst.rule96a.taxPaymentDays to pay IGST and interest if the proceeds were not received."
+    },
+    {
+      "id": "gst.rule96a.taxPaymentDays",
+      "value": 15,
+      "unit": "day",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter10/rule96a_v1.00.html",
+      "verified": true,
+      "note": "The bond or LUT binds the exporter to pay the tax and s.50 interest within fifteen days after the receipt period expires. This skill does not compute the interest."
+    },
+    {
+      "id": "gst.rule96a.appliesToSez",
+      "value": true,
+      "unit": "flag",
+      "effectiveFrom": "2017-07-01",
+      "effectiveTo": null,
+      "source": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter10/rule96a_v1.00.html",
+      "verified": true,
+      "note": "Rule 96A(6): sub-rule (1) applies mutatis mutandis to a zero-rated supply to an SEZ developer or SEZ unit without payment of integrated tax."
+    },
+    {
       "id": "gst.invoice.number.pattern",
       "value": "^[A-Za-z0-9/-]{1,16}$",
       "unit": "regex",
