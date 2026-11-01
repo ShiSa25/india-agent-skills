@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "domain": "inr",
+  "asOf": "2026-11-01",
+  "rules": [
+    {
+      "id": "inr.paisePerRupee",
+      "value": 100,
+      "unit": "paise",
+      "effectiveFrom": "2025-04-15",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/commonman/Upload/English/FAQs/PDFs/INDIANCURRENCY15042025.pdf",
+      "verified": true,
+      "note": "RBI Indian Currency FAQ, updated 15 Apr 2025, opened 2026-11-01: one rupee consists of 100 paise. effectiveFrom is the FAQ revision date."
+    },
+    {
+      "id": "inr.thousand.rupees",
+      "value": 1000,
+      "unit": "rupees",
+      "effectiveFrom": "2025-04-15",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/scripts/Explanatory.aspx",
+      "verified": true,
+      "note": "One thousand is 1,000 rupees. RBI defines 1 lakh as 100000, which is 100 thousands. The page was opened 2026-11-01."
+    },
+    {
+      "id": "inr.lakh.rupees",
+      "value": 100000,
+      "unit": "rupees",
+      "effectiveFrom": "2025-04-15",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/scripts/Explanatory.aspx",
+      "verified": true,
+      "note": "RBI explanatory notes: Unit 1 lakh = 100000. Opened 2026-11-01."
+    },
+    {
+      "id": "inr.crore.lakhs",
+      "value": 100,
+      "unit": "lakh",
+      "effectiveFrom": "2025-04-15",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/scripts/Explanatory.aspx",
+      "verified": true,
+      "note": "RBI offers Rs. lakh and Rs. crore as reporting units. One crore is 100 lakh (1,00,00,000 rupees) in that system."
+    },
+    {
+      "id": "inr.grouping",
+      "value": { "first": 3, "then": 2 },
+      "unit": "digits",
+      "effectiveFrom": "2025-04-15",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/scripts/Explanatory.aspx",
+      "verified": true,
+      "note": "Indian digit grouping that goes with lakh (1,00,000) and crore (1,00,00,000): the last three digits, then groups of two."
+    },
+    {
+      "id": "inr.scale.names",
+      "value": ["Thousand", "Lakh", "Crore"],
+      "unit": "name",
+      "effectiveFrom": "2025-04-15",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/scripts/Explanatory.aspx",
+      "verified": true,
+      "note": "Thousand, lakh and crore. RBI uses lakh and crore. Arab, kharab, nil and padma are not used."
+    },
+    {
+      "id": "inr.aboveCrore.words",
+      "value": "repeat-indian-system",
+      "unit": "convention",
+      "effectiveFrom": "2025-04-15",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/scripts/Explanatory.aspx",
+      "verified": false,
+      "note": "UNVERIFIED as a cheque-words statute. At or above 100 crore the crore count is spelled in the same Indian system: One Hundred Crore, One Thousand Crore, One Lakh Crore, One Crore Crore. Arab is not used. Government English says lakh crore; the exact words line is a convention."
+    },
+    {
+      "id": "inr.compact.suffix",
+      "value": { "lakh": "L", "crore": "Cr", "lakhCrore": "L Cr", "croreCrore": "Cr Cr" },
+      "unit": "suffix",
+      "effectiveFrom": "2025-04-15",
+      "effectiveTo": null,
+      "source": "https://www.rbi.org.in/scripts/Explanatory.aspx",
+      "verified": false,
+      "note": "UNVERIFIED abbreviations. Short forms use a space: 1.2 L, 1.2 Cr, 1.2 L Cr, 1.2 Cr Cr. At most two decimal places, half-up, trailing zeros removed. Node Intl is not used."
+    }
+  ]
+}

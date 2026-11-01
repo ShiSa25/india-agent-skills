@@ -104,8 +104,8 @@ Exit `0` valid, `1` invalid, `2` usage error. Stdout is one JSON object. `--json
 | `tds-freelancer-payments` | TDS on contractor and professional payments under the Income-tax Act 2025. Use when computing a deduction, a threshold, or the no-PAN rate. | coming in v0.1 |
 | `razorpay-integration` | Verify Razorpay payment signatures and webhooks, and convert amounts to subunits. Use when adding Razorpay checkout or a webhook. | coming in v0.1 |
 | `cashfree-integration` | Verify Cashfree webhook signatures and reject stale timestamps. Use when adding a Cashfree webhook. | coming in v0.1 |
-| `upi-payment-links` | Build unsigned UPI payment links and QR SVGs. Use when a user asks for a UPI link or QR. A link is not proof of payment. | coming in v0.1 |
-| `inr-formatting` | Format rupees in Indian grouping and in words. Use when showing an amount or an amount-in-words line. | coming in v0.1 |
+| [upi-payment-links](skills/upi-payment-links/SKILL.md) | Build and parse an unsigned upi://pay link and draw a QR SVG at ECC M. Checks the payee VPA, percent-encoding, INR amount, mode, and P2P or P2M limit warnings. Use when a user wants a UPI payment link, a UPI QR, or a check of pa, pn, am, tr, tn, mc, or mode. A link is not proof of payment. | 0.1.0 |
+| [inr-formatting](skills/inr-formatting/SKILL.md) | Format rupees with Indian lakh and crore grouping, in words, and in short form (1.2 L, 1.2 Cr), using integer paise. Use when showing an amount, an amount-in-words line, or converting rupees and paise. Does not use Node Intl. | 0.1.0 |
 | `indian-id-validators` | Format-check PAN, TAN, IFSC, PIN, and Indian mobile numbers. Use when a user pastes one of those IDs. An IFSC directory lookup is opt-in. | coming in v0.1 |
 | `aadhaar-safe-handling` | Verhoeff-check, mask, and scan for Aadhaar numbers. Use when text may contain an Aadhaar. Never log a full number. | coming in v0.1 |
 | `dpdp-compliance-check` | Scan a schema for personal data and list DPDP Act and Rules dates. Use when reviewing a schema or a privacy checklist. | coming in v0.1 |
