@@ -1,0 +1,105 @@
+{
+  "skill": "razorpay-integration",
+  "evals": [
+    {
+      "id": "inr-paise",
+      "prompt": "Convert ₹299.00 to the Razorpay order amount for INR.",
+      "expect": {
+        "op": "subunits",
+        "input": { "amount": "299.00", "currency": "INR" },
+        "valid": true,
+        "subunits": "29900",
+        "currency": "INR",
+        "exponent": 2,
+        "confirm": false
+      }
+    },
+    {
+      "id": "kwd-trailing-zero",
+      "prompt": "Razorpay amount for KWD 1.005. Can I send that?",
+      "expect": {
+        "op": "subunits",
+        "input": { "amount": "1.005", "currency": "KWD" },
+        "valid": false,
+        "errorIncludes": "subunit 0"
+      }
+    },
+    {
+      "id": "checkout-signature",
+      "prompt": "Verify the Razorpay checkout signature for order_9A33XWu170gUtm and pay_29QQoUBi66xm2f with test secret key_secret.",
+      "expect": {
+        "op": "signature",
+        "input": {
+          "orderId": "order_9A33XWu170gUtm",
+          "paymentId": "pay_29QQoUBi66xm2f",
+          "signature": "7920f7497f3db0d8c993fa160dc7e0a1ebf7424a95a786c40c62c6059f80d04d",
+          "secret": "key_secret"
+        },
+        "valid": true,
+        "confirm": false
+      }
+    },
+    {
+      "id": "uppercase-hex",
+      "prompt": "The Razorpay signature is the same hex but in uppercase. Does it verify?",
+      "expect": {
+        "op": "signature",
+        "input": {
+          "orderId": "order_9A33XWu170gUtm",
+          "paymentId": "pay_29QQoUBi66xm2f",
+          "signature": "7920F7497F3DB0D8C993FA160DC7E0A1EBF7424A95A786C40C62C6059F80D04D",
+          "secret": "key_secret"
+        },
+        "valid": false,
+        "errorIncludes": "signature mismatch"
+      }
+    },
+    {
+      "id": "authorized-not-paid",
+      "prompt": "A payment.authorized webhook just arrived. Should I ship the order?",
+      "expect": {
+        "op": "event",
+        "input": { "signatureVerified": true, "eventId": "evt_auth", "event": "payment.authorized" },
+        "valid": true,
+        "fulfil": false,
+        "action": "record_authorized",
+        "httpStatus": 200
+      }
+    },
+    {
+      "id": "captured-fulfil",
+      "prompt": "payment.captured arrived for evt_cap and the amount is 50000 subunits. Do I fulfil?",
+      "expect": {
+        "op": "event",
+        "input": {
+          "signatureVerified": true,
+          "eventId": "evt_cap",
+          "event": "payment.captured",
+          "amountMinor": "50000"
+        },
+        "valid": true,
+        "fulfil": true,
+        "action": "fulfil",
+        "capturedMinor": "50000"
+      }
+    },
+    {
+      "id": "duplicate-event",
+      "prompt": "Razorpay retried x-razorpay-event-id evt_cap and I have already stored it.",
+      "expect": {
+        "op": "event",
+        "input": {
+          "signatureVerified": true,
+          "eventId": "evt_cap",
+          "event": "payment.captured",
+          "seenEventIds": ["evt_cap"],
+          "state": "captured"
+        },
+        "duplicate": true,
+        "fulfil": false,
+        "httpStatus": 200,
+        "storeEventId": false
+      }
+    }
+  ]
+}
