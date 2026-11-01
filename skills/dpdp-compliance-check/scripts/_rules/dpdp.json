@@ -1,0 +1,500 @@
+{
+  "schema": 1,
+  "domain": "dpdp",
+  "asOf": "2026-11-01",
+  "rules": [
+    {
+      "id": "dpdp.phase.rules.immediate",
+      "value": {
+        "label": "Rules 1, 2 and 17 to 21",
+        "commencement": "2025-11-13",
+        "summary": "Short title, definitions, and the Data Protection Board."
+      },
+      "unit": "phase",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Digital Personal Data Protection Rules, 2025, rule 1(2). G.S.R. 846(E), New Delhi, 13 November 2025. In force on publication."
+    },
+    {
+      "id": "dpdp.phase.rules.one-year",
+      "value": {
+        "label": "Rule 4",
+        "commencement": "2026-11-13",
+        "summary": "Registration and obligations of Consent Managers."
+      },
+      "unit": "phase",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Rule 1(3): Rule 4 comes into force one year after publication of the 13 November 2025 gazette."
+    },
+    {
+      "id": "dpdp.phase.rules.eighteen-months",
+      "value": {
+        "label": "Rules 3, 5 to 16, 22 and 23",
+        "commencement": "2027-05-13",
+        "summary": "Notice, security, breach intimation, erasure, children, grievances, cross-border transfer, appeals, and calls for information."
+      },
+      "unit": "phase",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Rule 1(4): those rules come into force eighteen months after publication. 13 November 2025 plus 18 months is 13 May 2027."
+    },
+    {
+      "id": "dpdp.phase.act.immediate",
+      "value": {
+        "label": "Act sections that commence on notification",
+        "commencement": "2025-11-13",
+        "summary": "Section 1(2), section 2, sections 18 to 26, sections 35 and 38 to 43, and section 44(1) and (3)."
+      },
+      "unit": "phase",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2025/11/c56ceae6c383460ca69577428d36828b.pdf",
+      "verified": true,
+      "note": "G.S.R. 843(E), 13 November 2025, clause (a). Gazette imprint CG-DL-E-14112025-267647."
+    },
+    {
+      "id": "dpdp.phase.act.one-year",
+      "value": {
+        "label": "Act sections that commence one year after notification",
+        "commencement": "2026-11-13",
+        "summary": "Section 6(9) (Consent Manager registration) and section 27(1)(d)."
+      },
+      "unit": "phase",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2025/11/c56ceae6c383460ca69577428d36828b.pdf",
+      "verified": true,
+      "note": "G.S.R. 843(E), clause (b): one year from publication of that gazette."
+    },
+    {
+      "id": "dpdp.phase.act.eighteen-months",
+      "value": {
+        "label": "Act sections that commence eighteen months after notification",
+        "commencement": "2027-05-13",
+        "summary": "Sections 3 to 5, section 6(1) to (8) and (10), sections 7 to 17, section 27 except 27(1)(d), sections 28 to 34, 36 and 37, and section 44(2)."
+      },
+      "unit": "phase",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2025/11/c56ceae6c383460ca69577428d36828b.pdf",
+      "verified": true,
+      "note": "G.S.R. 843(E), clause (c). Section 33, which applies the Schedule penalties, is in this phase."
+    },
+    {
+      "id": "dpdp.item.consent-notice",
+      "value": {
+        "title": "Consent notice",
+        "act": ["4", "5", "6"],
+        "rules": ["3"],
+        "commencement": "2027-05-13",
+        "penaltyId": "dpdp.penalty.other"
+      },
+      "unit": "item",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Section 5 notice and section 6 consent (free, specific, informed, unconditional, unambiguous, clear affirmative action, limited to the specified purpose). Rule 3 requires an independent notice, an itemised description of the personal data, the purpose and the goods or services, and a link to exercise rights. Withdrawing consent must be as easy as giving it (section 6(4))."
+    },
+    {
+      "id": "dpdp.item.purpose-limitation",
+      "value": {
+        "title": "Purpose limitation",
+        "act": ["4", "6", "8"],
+        "rules": ["8"],
+        "commencement": "2027-05-13",
+        "penaltyId": "dpdp.penalty.other"
+      },
+      "unit": "item",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Processing only for a lawful purpose (section 4) and only for the purpose in the consent (section 6(1)). Erase when consent is withdrawn or the specified purpose is no longer served, unless the law requires retention (section 8(7)). Rule 8 deems the purpose over for the Third Schedule classes."
+    },
+    {
+      "id": "dpdp.item.children",
+      "value": {
+        "title": "Children's data and verifiable parental consent",
+        "act": ["9"],
+        "rules": ["10", "11", "12"],
+        "commencement": "2027-05-13",
+        "penaltyId": "dpdp.penalty.children"
+      },
+      "unit": "item",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "A child is a person who has not completed 18 years (section 2(f)). Section 9(1) requires verifiable consent of the parent or lawful guardian. Section 9(2) forbids processing likely to harm a child's well-being. Section 9(3) forbids tracking, behavioural monitoring, and targeted advertising directed at children. Rule 10 is the verifiable-consent check. Rule 12 and the Fourth Schedule are the exemptions, and they are narrow."
+    },
+    {
+      "id": "dpdp.item.breach-notice",
+      "value": {
+        "title": "Breach notice timelines",
+        "act": ["8"],
+        "rules": ["6", "7"],
+        "commencement": "2027-05-13",
+        "penaltyId": "dpdp.penalty.breach-notice"
+      },
+      "unit": "item",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Section 8(5) and rule 6: reasonable security safeguards (encryption or equivalent, access control, logs, backups, processor contract). Section 8(6) and rule 7: tell each affected Data Principal without delay, and tell the Board without delay, with the detailed report within 72 hours of becoming aware unless the Board allows longer. The security-safeguard penalty and the notice penalty are separate Schedule rows."
+    },
+    {
+      "id": "dpdp.item.retention",
+      "value": {
+        "title": "Data retention and erasure",
+        "act": ["8", "12"],
+        "rules": ["8"],
+        "commencement": "2027-05-13",
+        "penaltyId": "dpdp.penalty.other"
+      },
+      "unit": "item",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Section 12: correction and erasure on request unless retention is necessary for the purpose or for law. Rule 8(2): inform the Data Principal at least 48 hours before erasure. Rule 8(3): keep processing logs for at least one year for the Seventh Schedule purposes, then erase unless another law says otherwise. Third Schedule user-count thresholds are a separate unverified row."
+    },
+    {
+      "id": "dpdp.item.grievance",
+      "value": {
+        "title": "Grievance contact",
+        "act": ["8", "13"],
+        "rules": ["9", "14"],
+        "commencement": "2027-05-13",
+        "penaltyId": "dpdp.penalty.other"
+      },
+      "unit": "item",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "The Act does not create a post titled Grievance Officer. Section 8(9) and rule 9 require published business contact information of the Data Protection Officer, if any, or of a person who can answer questions. Section 8(10) and section 13 require a grievance mechanism. Rule 14(3): respond within a reasonable period not exceeding 90 days. The Data Principal must use that mechanism before approaching the Board (section 13(3))."
+    },
+    {
+      "id": "dpdp.item.sdf",
+      "value": {
+        "title": "Significant Data Fiduciary duties",
+        "act": ["10"],
+        "rules": ["13"],
+        "commencement": "2027-05-13",
+        "penaltyId": "dpdp.penalty.sdf"
+      },
+      "unit": "item",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Only a Data Fiduciary the Central Government notifies under section 10. Duties include a Data Protection Officer based in India, an independent data auditor, a Data Protection Impact Assessment and audit once every 12 months (rule 13(1)), a report of significant observations to the Board, and algorithmic due diligence. These duties do not apply to every startup."
+    },
+    {
+      "id": "dpdp.item.cross-border",
+      "value": {
+        "title": "Cross-border transfer",
+        "act": ["16"],
+        "rules": ["13", "15"],
+        "commencement": "2027-05-13",
+        "penaltyId": "dpdp.penalty.other"
+      },
+      "unit": "item",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Section 16 lets the Central Government restrict transfers to notified countries. It is not a general ban on processing abroad. Rule 15 allows transfer subject to requirements the Central Government specifies by order. Rule 13(4) can require a Significant Data Fiduciary to keep specified personal data and its traffic data inside India. Another statute can impose a stricter restriction (section 16(2))."
+    },
+    {
+      "id": "dpdp.item.consent-manager",
+      "value": {
+        "title": "Consent Manager",
+        "act": ["6"],
+        "rules": ["4"],
+        "commencement": "2026-11-13",
+        "penaltyId": "dpdp.penalty.other"
+      },
+      "unit": "item",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Section 6(7) to (9) and rule 4. A Data Principal may give, manage, review, and withdraw consent through a registered Consent Manager. First Schedule: the applicant is a company incorporated in India with net worth not less than two crore rupees. This row comes into force one year after 13 November 2025, earlier than the notice and erasure rules."
+    },
+    {
+      "id": "dpdp.penalty.security",
+      "value": { "amount": 250, "section": "8(5)", "label": "Failure to take reasonable security safeguards" },
+      "unit": "crore",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.indiacode.nic.in/handle/123456789/22037",
+      "verified": true,
+      "note": "Schedule item 1, read with section 33(1). Maximum. The Schedule is applied when section 33 is in force (13 May 2027)."
+    },
+    {
+      "id": "dpdp.penalty.breach-notice",
+      "value": { "amount": 200, "section": "8(6)", "label": "Failure to notify the Board or an affected Data Principal of a breach" },
+      "unit": "crore",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.indiacode.nic.in/handle/123456789/22037",
+      "verified": true,
+      "note": "Schedule item 2. Maximum."
+    },
+    {
+      "id": "dpdp.penalty.children",
+      "value": { "amount": 200, "section": "9", "label": "Breach of additional obligations for children" },
+      "unit": "crore",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.indiacode.nic.in/handle/123456789/22037",
+      "verified": true,
+      "note": "Schedule item 3. Maximum."
+    },
+    {
+      "id": "dpdp.penalty.sdf",
+      "value": { "amount": 150, "section": "10", "label": "Breach of additional obligations of a Significant Data Fiduciary" },
+      "unit": "crore",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.indiacode.nic.in/handle/123456789/22037",
+      "verified": true,
+      "note": "Schedule item 4. Maximum."
+    },
+    {
+      "id": "dpdp.penalty.principal-duties",
+      "value": { "amount": 10000, "section": "15", "label": "Breach of Data Principal duties" },
+      "unit": "inr",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.indiacode.nic.in/handle/123456789/22037",
+      "verified": true,
+      "note": "Schedule item 5. Maximum ten thousand rupees. This penalty is on the Data Principal, not on the Data Fiduciary."
+    },
+    {
+      "id": "dpdp.penalty.undertaking",
+      "value": { "amount": null, "section": "32", "label": "Breach of a voluntary undertaking accepted by the Board" },
+      "unit": "as-applicable",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.indiacode.nic.in/handle/123456789/22037",
+      "verified": true,
+      "note": "Schedule item 6. Up to the penalty applicable to the breach for which the section 28 proceedings were instituted."
+    },
+    {
+      "id": "dpdp.penalty.other",
+      "value": { "amount": 50, "section": "other", "label": "Breach of any other provision of the Act or the rules" },
+      "unit": "crore",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.indiacode.nic.in/handle/123456789/22037",
+      "verified": true,
+      "note": "Schedule item 7. Maximum fifty crore rupees."
+    },
+    {
+      "id": "dpdp.child.age",
+      "value": 18,
+      "unit": "years",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Section 2(f): an individual who has not completed eighteen years. Rule 10 uses the same age for the parent."
+    },
+    {
+      "id": "dpdp.breach.board.hours",
+      "value": 72,
+      "unit": "hours",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Rule 7(2)(b). The detailed report to the Board. The first description goes without delay. The Board may allow a longer period on a written request."
+    },
+    {
+      "id": "dpdp.grievance.days",
+      "value": 90,
+      "unit": "days",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Rule 14(3): a reasonable period not exceeding ninety days."
+    },
+    {
+      "id": "dpdp.retention.purpose.years",
+      "value": 3,
+      "unit": "years",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Third Schedule: three years from the date the Data Principal last approached the Data Fiduciary, or from commencement of the Rules, whichever is later. Account access and stored virtual tokens are excluded."
+    },
+    {
+      "id": "dpdp.retention.logs.years",
+      "value": 1,
+      "unit": "years",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Rule 6(1)(e) and rule 8(3): minimum one year for the logs described there, unless another law requires otherwise."
+    },
+    {
+      "id": "dpdp.retention.notice.hours",
+      "value": 48,
+      "unit": "hours",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Rule 8(2): inform the Data Principal at least forty-eight hours before erasure under that rule."
+    },
+    {
+      "id": "dpdp.sdf.audit.months",
+      "value": 12,
+      "unit": "months",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "Rule 13(1): Data Protection Impact Assessment and audit once every twelve months from notification as a Significant Data Fiduciary."
+    },
+    {
+      "id": "dpdp.consent-manager.net-worth",
+      "value": 2,
+      "unit": "crore",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": true,
+      "note": "First Schedule, Part A, item 4: net worth not less than two crore rupees."
+    },
+    {
+      "id": "dpdp.retention.user-threshold",
+      "value": {
+        "comparator": "not-less-than",
+        "ecommerceUsers": 20000000,
+        "gamingUsers": 5000000,
+        "socialUsers": 20000000
+      },
+      "unit": "users",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa",
+      "verified": false,
+      "note": "UNVERIFIED user-count line of the Third Schedule. The English PDF text layer splits columns so the e-commerce row can be misread as 'less than'. The gaming row reads 'not less than' fifty lakh. Treat two crore and fifty lakh as not-less-than thresholds only after a human checks the gazette page."
+    },
+    {
+      "id": "dpdp.field.email",
+      "value": { "kind": "email", "severity": "medium", "words": ["email", "e-mail"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice", "grievance"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Scanner token. An email address is personal data when it identifies a person (section 2(t))."
+    },
+    {
+      "id": "dpdp.field.phone",
+      "value": { "kind": "phone", "severity": "medium", "words": ["phone", "mobile", "msisdn"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice", "grievance"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Scanner token for a phone or mobile number."
+    },
+    {
+      "id": "dpdp.field.aadhaar",
+      "value": { "kind": "aadhaar", "severity": "high", "words": ["aadhaar", "aadhar"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice", "grievance"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "High severity because an Aadhaar number is an official identifier. This scanner does not check the UIDAI Act. Do not store a real Aadhaar in source."
+    },
+    {
+      "id": "dpdp.field.pan",
+      "value": { "kind": "pan", "severity": "high", "words": ["pan"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice", "grievance"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Matched as a whole word so company and spanish are not PAN fields."
+    },
+    {
+      "id": "dpdp.field.dob",
+      "value": { "kind": "dob", "severity": "high", "words": ["dob", "birthdate", "birthday"], "phrases": ["date of birth", "birth date"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice", "children"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Date of birth can show that the person is a child. It triggers the children's-data item."
+    },
+    {
+      "id": "dpdp.field.address",
+      "value": { "kind": "address", "severity": "medium", "words": ["address", "street", "pincode"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Postal address. City alone is not flagged."
+    },
+    {
+      "id": "dpdp.field.ip",
+      "value": { "kind": "ip", "severity": "medium", "words": ["ip"], "phrases": ["ip address"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Matched as the word ip, including ipAddress. Description is not a match."
+    },
+    {
+      "id": "dpdp.field.device",
+      "value": { "kind": "device_id", "severity": "medium", "words": ["imei"], "phrases": ["device id", "device identifier"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Device identifier. A column named id alone is not a device id."
+    },
+    {
+      "id": "dpdp.field.location",
+      "value": { "kind": "location", "severity": "high", "words": ["location", "latitude", "longitude", "geolocation", "gps"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice", "children", "cross-border"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Location can be tracking of a child, which section 9(3) restricts. The word lat alone is not matched."
+    },
+    {
+      "id": "dpdp.field.health",
+      "value": { "kind": "health", "severity": "high", "words": ["health", "diagnosis", "medical", "patient"], "items": ["consent-notice", "purpose-limitation", "retention", "breach-notice", "children"] },
+      "unit": "field",
+      "effectiveFrom": "2023-08-11",
+      "effectiveTo": null,
+      "source": "https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf",
+      "verified": true,
+      "note": "Health data is personal data. The Act has no separate sensitive-data schedule. Children's health processing has a narrow Fourth Schedule exemption and is not a free pass."
+    }
+  ]
+}

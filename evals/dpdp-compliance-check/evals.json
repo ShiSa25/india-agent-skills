@@ -1,0 +1,44 @@
+{
+  "skill": "dpdp-compliance-check",
+  "evals": [
+    {
+      "id": "rule-4-window",
+      "prompt": "Give me a DPDP checklist as of 1 November 2026. When does the Consent Manager rule start?",
+      "expect": {
+        "input": { "asOf": "2026-11-01" },
+        "valid": true,
+        "confirm": true,
+        "markdownIncludes": "Rule 4 in force in 12 days"
+      }
+    },
+    {
+      "id": "prisma-aadhaar",
+      "prompt": "Scan this Prisma model and tell me if any field is high severity: model User { id Int aadhaarNumber String }",
+      "expect": {
+        "input": {
+          "asOf": "2026-11-01",
+          "kind": "prisma",
+          "source": "model User {\n  id Int\n  aadhaarNumber String\n}"
+        },
+        "valid": false,
+        "highName": "aadhaarNumber"
+      }
+    },
+    {
+      "id": "breach-hours",
+      "prompt": "How many hours does the DPDP Rules give for the detailed breach report to the Board?",
+      "expect": {
+        "input": { "asOf": "2026-11-01" },
+        "fact": { "key": "breachBoardHours", "value": 72 }
+      }
+    },
+    {
+      "id": "email-medium",
+      "prompt": "Is an email column high severity under the DPDP scanner?",
+      "expect": {
+        "input": { "asOf": "2026-11-01", "columns": ["email"] },
+        "valid": true
+      }
+    }
+  ]
+}
