@@ -64,7 +64,7 @@ Rules data is `scripts/_rules/ids.json`, as of 2026-11-01. The checksum is `verh
 - Storage, from the Act and [UIDAI Circular No. 14 of 2025 (4 Nov 2025)](https://uidai.gov.in/images/Circular-No.14_of-2025.pdf), opened 2026-11-01. Run `aadhaar-storage.mjs` and repeat its `section29` and `dataVault` text. Do not shorten them into "just hash it". The circular says hashing an Aadhaar number is not allowed as the reference key.
 - Section 29: core biometric information must not be shared, and must not be used except to generate Aadhaar numbers and to authenticate. Other identity information may be shared only as the Act and regulations allow. A requesting entity or offline verification-seeking entity may use or disclose identity information only for the purposes told to the person in writing, in clear language. An Aadhaar number, demographic information, or photograph must not be published or displayed publicly except as regulations allow.
 - Requesting entities must store Aadhaar numbers and connected data, such as eKYC XML, only in an Aadhaar Data Vault. Other systems keep a reference key. The number must not be recoverable from that key.
-- A Virtual ID is 16 digits, temporary, and must not be stored. [UIDAI VID FAQ](https://uidai.gov.in/en/contact-support/have-any-question/284-faqs/aadhaar-online-services/virtual-id-vid.html). There is no published checksum. The 16-digit mask is UNVERIFIED as a UIDAI template, so `confirm` is true. The scanner flags a 16-digit run only when the same line says VID or virtual ID, so card numbers are not reported as Aadhaar.
+- A Virtual ID is 16 digits, temporary, and revocable, and an agency should not store it. [UIDAI authentication page](https://uidai.gov.in/en/authentication), opened 2026-11-01. There is no published checksum. The 16-digit mask is UNVERIFIED as a UIDAI template, so `confirm` is true. The scanner flags a 16-digit run only when the same line says VID or virtual ID, so card numbers are not reported as Aadhaar. The old VID FAQ index returns HTTP 404 and is not used.
 
 ## Edge cases
 
@@ -89,7 +89,7 @@ Rules data is `scripts/_rules/ids.json`, as of 2026-11-01. The checksum is `verh
 {"valid":true,"kind":"aadhaar","masked":"XXXX XXXX 9010","length":12,"errors":[],"warnings":["Leading digit is 0 or 1. UIDAI does not publish this restriction. Confirm with the official source before relying on this.","Verhoeff valid does not mean UIDAI issued this number."],"confirm":true,"disclaimer":"This tool gives general information..."}
 ```
 
-Storage (real script output, bodies shortened here to the rule text): `confirm` is false. `section29` starts "Section 29 restricts sharing." `dataVault` starts "Requesting entities must store Aadhaar numbers and connected Aadhaar data, such as eKYC XML, only in an Aadhaar Data Vault." `virtualId` is "Do not store a Virtual ID. UIDAI says it is temporary, the holder can replace it, and storing it has no value."
+Storage (real script output, bodies shortened here to the rule text): `confirm` is false. `section29` starts "Section 29 restricts sharing." `dataVault` starts "Requesting entities must store Aadhaar numbers and connected Aadhaar data, such as eKYC XML, only in an Aadhaar Data Vault." `virtualId` is "Do not store a Virtual ID. UIDAI says it is temporary, the holder can replace it, and agencies should not store it in a database or in logs."
 
 ## Disclaimer
 

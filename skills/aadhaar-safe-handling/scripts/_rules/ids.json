@@ -304,9 +304,9 @@
       "unit": "digits",
       "effectiveFrom": "2018-07-01",
       "effectiveTo": null,
-      "source": "https://uidai.gov.in/en/contact-support/have-any-question/284-faqs/aadhaar-online-services/virtual-id-vid.html",
+      "source": "https://uidai.gov.in/en/authentication",
       "verified": true,
-      "note": "UIDAI FAQ: a Virtual ID is a temporary, revocable 16-digit number mapped to the Aadhaar number. The FAQ does not state a launch date; 2018-07-01 is only so the row is in force on the as-of date. There is no published checksum in that FAQ."
+      "note": "UIDAI authentication page opened 2026-11-01. It says a VID is a temporary, revocable 16-digit random number mapped to the Aadhaar number. The old VID FAQ index returns HTTP 404. This page does not publish a checksum. 2018-07-01 only keeps the row in force; the page does not state a start date."
     },
     {
       "id": "ids.aadhaar.vid.mask",
@@ -314,19 +314,19 @@
       "unit": "text",
       "effectiveFrom": "2018-07-01",
       "effectiveTo": null,
-      "source": "https://uidai.gov.in/en/contact-support/have-any-question/284-faqs/aadhaar-online-services/virtual-id-vid.html",
+      "source": "https://uidai.gov.in/en/authentication",
       "verified": false,
-      "note": "UNVERIFIED. The 12-digit mask redacts the first 8 digits. This row extends that display to a 16-digit VID. The UIDAI VID FAQ does not publish a mask template."
+      "note": "UNVERIFIED. The 12-digit mask redacts the first 8 digits. This row extends that display to a 16-digit VID. The UIDAI authentication page describes a 16-digit VID and does not publish a mask template."
     },
     {
       "id": "ids.aadhaar.vid.storage",
-      "value": "Do not store a Virtual ID. UIDAI says it is temporary, the holder can replace it, and storing it has no value.",
+      "value": "Do not store a Virtual ID. UIDAI says it is temporary, the holder can replace it, and agencies should not store it in a database or in logs.",
       "unit": "text",
       "effectiveFrom": "2018-07-01",
       "effectiveTo": null,
-      "source": "https://uidai.gov.in/en/contact-support/have-any-question/284-faqs/aadhaar-online-services/virtual-id-vid.html",
+      "source": "https://uidai.gov.in/en/authentication",
       "verified": true,
-      "note": "UIDAI FAQ answer to whether an agency can store a VID: No."
+      "note": "Same UIDAI authentication page, opened 2026-11-01: an agency should not store a VID because it is temporary and the holder can change it. The old VID FAQ index returns HTTP 404."
     }
   ]
 }
