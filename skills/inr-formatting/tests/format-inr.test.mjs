@@ -53,6 +53,17 @@ describe('SPEC vectors', () => {
     assert.equal(toWords('1000000000000'), 'Rupees One Lakh Crore Only');
   });
 
+  test('a short form that rounds up to the next unit is written in that unit', () => {
+    assert.equal(compact('9999499.99'), '99.99 L');
+    assert.equal(compact('9999500'), '1 Cr');
+    assert.equal(compact('9999999.99'), '1 Cr');
+    assert.equal(compact('-9999999.99'), '-1 Cr');
+    assert.equal(compact('999999949999.99'), '99,999.99 Cr');
+    assert.equal(compact('999999950000'), '1 L Cr');
+    assert.equal(compact('99994999999999.99'), '99.99 L Cr');
+    assert.equal(compact('99995000000000'), '1 Cr Cr');
+  });
+
   test('negatives, accounting parentheses, and display flags', () => {
     assert.equal(formatINR('-0.50'), '-₹0.50');
     assert.equal(toWords('-0.50'), 'Minus Rupees Zero and Fifty Paise Only');
