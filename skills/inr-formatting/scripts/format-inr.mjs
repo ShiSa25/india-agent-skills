@@ -297,23 +297,24 @@ function compactFor(absolute, negative, ctx, applied, warnings) {
     const suffix = ruleById('inr', 'inr.compact.suffix', ctx.date);
     applied.push(suffix);
     warnings.push('Short forms such as L and Cr are abbreviations, not a statutory format.');
-    let divisor;
-    let label;
-    if (absolute < oneCrore) {
-      divisor = ctx.lakhRupees;
-      label = suffix.value.lakh;
-    } else if (absolute < oneLakhCrore) {
-      divisor = ctx.croreRupees;
-      label = suffix.value.crore;
-    } else if (absolute < oneCroreCrore) {
-      divisor = ctx.lakhRupees * ctx.croreRupees;
-      label = suffix.value.lakhCrore;
-    } else {
-      divisor = ctx.croreRupees * ctx.croreRupees;
-      label = suffix.value.croreCrore;
+    const tiers = [
+      { divisor: ctx.lakhRupees, label: suffix.value.lakh },
+      { divisor: ctx.croreRupees, label: suffix.value.crore },
+      { divisor: ctx.lakhRupees * ctx.croreRupees, label: suffix.value.lakhCrore },
+      { divisor: ctx.croreRupees * ctx.croreRupees, label: suffix.value.croreCrore },
+    ];
+    let index = 3;
+    if (absolute < oneCrore) index = 0;
+    else if (absolute < oneLakhCrore) index = 1;
+    else if (absolute < oneCroreCrore) index = 2;
+    let hundredths = halfUpDiv(absolute, tiers[index].divisor);
+    // Rounding to two places can reach the next unit: 99,99,500 rupees is 100.00 L, which is 1 Cr.
+    const next = tiers[index + 1];
+    if (next && hundredths * tiers[index].divisor >= next.divisor * pow10(2)) {
+      index += 1;
+      hundredths = halfUpDiv(absolute, next.divisor);
     }
-    const hundredths = halfUpDiv(absolute, divisor);
-    body = `${trimHundredths(hundredths, ctx)} ${label}`;
+    body = `${trimHundredths(hundredths, ctx)} ${tiers[index].label}`;
   }
   return negative ? `-${body}` : body;
 }

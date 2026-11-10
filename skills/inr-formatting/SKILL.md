@@ -69,6 +69,7 @@ Rules data is `scripts/_rules/inr.json`, as of 2026-11-01. Place values are read
 - `{"rupees":"1.00","paise":"50"}` is rejected because the two amounts disagree.
 - Tests compare these strings directly. They do not call `Intl` and they do not depend on the Node ICU version.
 - `99` crore is `Rupees Ninety-Nine Crore Only`. The hundred-crore wording starts at `100` crore.
+- A short form that rounds up to the next unit is written in that unit. `9999500` rupees is `1 Cr`, not `100 L`. `9999499.99` rupees is `99.99 L`.
 
 ## Disclaimer
 
