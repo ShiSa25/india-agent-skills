@@ -1,7 +1,7 @@
 {
   "name": "india-agent-skills",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Tested, source-linked Agent Skills for Indian GST, payments, IDs, and compliance.",
   "type": "module",
   "license": "MIT",
