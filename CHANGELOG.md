@@ -6,7 +6,7 @@ Patch on the 0.1.1 pack. No rule values changed. The same 13 skills are at metad
 
 - `inr-formatting`: a short form that rounds up to the next unit is written in that unit. `9999500` rupees is `1 Cr`, not `100 L`. Credit ohnitesh (#15).
 - `inr-formatting`: a minus sign may come before `₹`, so the tool reads back the `-₹1,234.00` it writes. Credit ohnitesh (#16).
-- `tds-freelancer-payments`: optional `ytdTaxedMinor` holds the part of the year already taxed. The threshold uses the whole year, and the base uses only the untaxed part plus this bill, so a later bill is taxed once and a crossing bill does not tax those rupees again. Credit ohnitesh (#17, #18).
+- `tds-freelancer-payments`: optional `ytdTaxedMinor` holds the part of the year already taxed. The threshold uses the whole year, and the base uses only the untaxed part plus this bill, so a later bill is taxed once and a crossing bill does not tax those rupees again. Reported by ohnitesh (#17). Fixed in #18.
 
 ## 0.1.1 — 2026-11-01
 
