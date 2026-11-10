@@ -17,7 +17,7 @@ A skill is a folder with a `SKILL.md`. The frontmatter `description` says what i
 | Claude Code, folder at `.claude/skills/<skill>` | `/gstin-validator` | Same |
 | Cursor | `/gstin-validator` in Agent chat. Option+Enter (Alt+Enter) keeps it for the session | Same |
 
-`npx skills add ShiSa25/india-agent-skills` copies every skill in this repo into the directory the agent already scans. One skill: `npx skills add ShiSa25/india-agent-skills --skill <name>`. All 13 folders are present at v0.1.1.
+`npx skills add ShiSa25/india-agent-skills` copies every skill in this repo into the directory the agent already scans. One skill: `npx skills add ShiSa25/india-agent-skills --skill <name>`. All 13 folders are present at v0.1.2.
 
 ## When to use which skill
 

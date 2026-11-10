@@ -8,7 +8,7 @@ description: >-
   9-month and 15-month realisation clocks.
 license: MIT
 compatibility: Requires Node.js 20 or newer. No network and no runtime dependencies.
-metadata: { version: "0.1.1", rules-as-of: "2026-11-01", jurisdiction: "IN" }
+metadata: { version: "0.1.2", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 ---
 
 # Freelancer export compliance
