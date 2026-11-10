@@ -24,6 +24,7 @@ const KEYS = new Set([
   'category',
   'amountMinor',
   'ytdMinor',
+  'ytdTaxedMinor',
   'panAvailable',
   'auditRequired',
 ]);
@@ -96,7 +97,10 @@ export function tds(input) {
 
   const amount = spec.amountMinor;
   const ytd = spec.ytdMinor;
-  const aggregate = ytd + amount;
+  const ytdTaxed = spec.ytdTaxedMinor;
+  // Threshold sees the whole year. The base sees only rupees not yet taxed, plus this bill.
+  const untaxed = ytd + amount;
+  const yearTotal = untaxed + ytdTaxed;
   let thresholdHit = false;
   let taxable = 0n;
   if (row.director) {
@@ -104,9 +108,9 @@ export function tds(input) {
     taxable = thresholdHit ? amount : 0n;
   } else {
     const singleHit = row.singleThreshold !== null && amount > row.singleThreshold;
-    const aggregateHit = row.aggregateThreshold !== null && aggregate > row.aggregateThreshold;
+    const aggregateHit = row.aggregateThreshold !== null && yearTotal > row.aggregateThreshold;
     thresholdHit = singleHit || aggregateHit;
-    if (thresholdHit) taxable = aggregateHit ? aggregate : amount;
+    if (thresholdHit) taxable = aggregateHit ? untaxed : amount;
   }
 
   let rateBp = row.rateBp;
@@ -118,11 +122,12 @@ export function tds(input) {
 
   const tdsMinor = thresholdHit ? pct(taxable, rateBp) : 0n;
   if (thresholdHit && taxable > amount) {
+    const scope = ytdTaxed > 0n ? 'untaxed FY total' : 'whole FY aggregate';
     warnings.push(
-      `TDS is on the whole FY aggregate of ${rupees(taxable)}, not only on this payment of ${rupees(amount)}. Deposit the tax even when it is more than the amount being paid out.`,
+      `TDS is on the ${scope} of ${rupees(taxable)}, not only on this payment of ${rupees(amount)}. Deposit the tax even when it is more than the amount being paid out.`,
     );
   }
-  if (row.director && ytd > 0n) {
+  if (row.director && (ytd > 0n || ytdTaxed > 0n)) {
     warnings.push('Director remuneration has no threshold. Tax is on this payment only. Earlier director payments are not added again.');
   }
 
@@ -263,7 +268,8 @@ function readInput(input) {
   const panAvailable = requireBool(input.panAvailable, 'panAvailable');
   const amountMinor = requireMinor(input.amountMinor, 'amountMinor');
   const ytdMinor = requireMinor(input.ytdMinor, 'ytdMinor');
-  if (amountMinor < 0n || ytdMinor < 0n) throw usage('amounts cannot be negative.');
+  const ytdTaxedMinor = input.ytdTaxedMinor === undefined ? 0n : requireMinor(input.ytdTaxedMinor, 'ytdTaxedMinor');
+  if (amountMinor < 0n || ytdMinor < 0n || ytdTaxedMinor < 0n) throw usage('amounts cannot be negative.');
   let auditRequired = null;
   if (payerType === 'individual' || payerType === 'huf') {
     if (input.auditRequired === undefined) {
@@ -273,7 +279,7 @@ function readInput(input) {
   } else if (input.auditRequired === false) {
     throw usage('auditRequired false is only for an individual or HUF payer. A company or other payer uses the contractor or fee row.');
   }
-  return { paymentDate, payerType, payeeType, category, panAvailable, amountMinor, ytdMinor, auditRequired };
+  return { paymentDate, payerType, payeeType, category, panAvailable, amountMinor, ytdMinor, ytdTaxedMinor, auditRequired };
 }
 
 export function parseArgs(argv) {
