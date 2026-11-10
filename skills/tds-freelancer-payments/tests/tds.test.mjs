@@ -117,6 +117,162 @@ describe('rates, thresholds, and who deducts', () => {
     assert.equal(result.tds, '1150.00');
   });
 
+  test('below the threshold, the crossing bill, and bills after it each tax a rupee once', () => {
+    const below = pay({ amountMinor: '900000', ytdMinor: '4000000', ytdTaxedMinor: '0' });
+    assert.equal(below.thresholdHit, false);
+    assert.equal(below.tdsMinor, '0');
+    assert.equal(below.taxableMinor, '0');
+
+    const crossing = pay({ amountMinor: '1100000', ytdMinor: '4000000' });
+    assert.equal(crossing.thresholdHit, true);
+    assert.equal(crossing.taxableMinor, '5100000');
+    assert.equal(crossing.tdsMinor, '510000');
+    assert.equal(crossing.tds, '5100.00');
+
+    const later = pay({
+      paymentDate: '2026-07-01',
+      amountMinor: '1000000',
+      ytdMinor: '0',
+      ytdTaxedMinor: '5100000',
+    });
+    assert.equal(later.thresholdHit, true);
+    assert.equal(later.taxableMinor, '1000000');
+    assert.equal(later.tdsMinor, '100000');
+    assert.equal(later.tds, '1000.00');
+    assert.equal(later.rateBp, 1000);
+
+    const again = pay({
+      paymentDate: '2026-08-01',
+      amountMinor: '250000',
+      ytdMinor: '0',
+      ytdTaxedMinor: '6100000',
+    });
+    assert.equal(again.taxableMinor, '250000');
+    assert.equal(again.tdsMinor, '25000');
+
+    const taxed = BigInt(crossing.tdsMinor) + BigInt(later.tdsMinor) + BigInt(again.tdsMinor);
+    assert.equal(taxed, ((5100000n + 1000000n + 250000n) * 1000n) / 10000n);
+  });
+
+  test('issue 17: the July bill is ₹1,000 and the contractor follow-up is ₹700', () => {
+    const july = tds({
+      paymentDate: '2026-07-01',
+      payerType: 'other',
+      payeeType: 'individual',
+      category: 'professional',
+      amountMinor: '1000000',
+      ytdMinor: '0',
+      ytdTaxedMinor: '5100000',
+      panAvailable: true,
+    });
+    assert.equal(july.valid, true);
+    assert.equal(july.thresholdHit, true);
+    assert.equal(july.taxableMinor, '1000000');
+    assert.equal(july.tdsMinor, '100000');
+    assert.equal(july.tds, '1000.00');
+    assert.notEqual(july.tdsMinor, '0');
+    assert.notEqual(july.tdsMinor, '610000');
+
+    const asRupees = pay({
+      paymentDate: '2026-07-01',
+      amountMinor: '10000.00',
+      ytdMinor: '0.00',
+      ytdTaxedMinor: '51000.00',
+    });
+    assert.equal(asRupees.tds, '1000.00');
+
+    const noPan = pay({
+      paymentDate: '2026-07-01',
+      amountMinor: '1000000',
+      ytdMinor: '0',
+      ytdTaxedMinor: '5100000',
+      panAvailable: false,
+    });
+    assert.equal(noPan.rateBp, 2000);
+    assert.equal(noPan.taxableMinor, '1000000');
+    assert.equal(noPan.tdsMinor, '200000');
+
+    const oldAct = pay({
+      paymentDate: '2026-03-31',
+      amountMinor: '1000000',
+      ytdMinor: '0',
+      ytdTaxedMinor: '5100000',
+    });
+    assert.equal(oldAct.section, '194J');
+    assert.equal(oldAct.tdsMinor, '100000');
+
+    const stillExact = pay({ amountMinor: '1000000', ytdMinor: '0', ytdTaxedMinor: '4000000' });
+    assert.equal(stillExact.thresholdHit, false);
+    assert.equal(stillExact.tdsMinor, '0');
+
+    const onePaiseOver = pay({ amountMinor: '1000001', ytdMinor: '0', ytdTaxedMinor: '4000000' });
+    assert.equal(onePaiseOver.thresholdHit, true);
+    assert.equal(onePaiseOver.taxableMinor, '1000001');
+    assert.equal(onePaiseOver.tdsMinor, '100000');
+
+    const contractor = pay({
+      category: 'contractor',
+      amountMinor: '3000000',
+      ytdMinor: '4000000',
+      ytdTaxedMinor: '3500000',
+    });
+    assert.equal(contractor.thresholdHit, true);
+    assert.equal(contractor.taxableMinor, '7000000');
+    assert.equal(contractor.rateBp, 100);
+    assert.equal(contractor.tdsMinor, '70000');
+    assert.equal(contractor.tds, '700.00');
+    assert.notEqual(contractor.tdsMinor, '0');
+    assert.notEqual(contractor.tdsMinor, '105000');
+    assert.ok(contractor.warnings.some((warning) => warning.includes('untaxed FY total')));
+
+    const afterContractor = pay({
+      category: 'contractor',
+      amountMinor: '1000000',
+      ytdMinor: '0',
+      ytdTaxedMinor: '10500000',
+    });
+    assert.equal(afterContractor.taxableMinor, '1000000');
+    assert.equal(afterContractor.tdsMinor, '10000');
+    assert.equal(afterContractor.tds, '100.00');
+
+    const singleOnly = pay({
+      category: 'contractor',
+      amountMinor: '3500000',
+      ytdMinor: '2000000',
+      ytdTaxedMinor: '1000000',
+    });
+    assert.equal(singleOnly.taxableMinor, '3500000');
+    assert.equal(singleOnly.tdsMinor, '35000');
+
+    const director = pay({
+      category: 'director',
+      amountMinor: '100',
+      ytdMinor: '0',
+      ytdTaxedMinor: '5000000',
+    });
+    assert.equal(director.taxableMinor, '100');
+    assert.equal(director.tdsMinor, '10');
+    assert.ok(director.warnings.some((warning) => warning.includes('this payment only')));
+
+    const residualLater = tds({
+      paymentDate: '2026-06-01',
+      payerType: 'individual',
+      payeeType: 'individual',
+      category: 'professional',
+      amountMinor: '1000000',
+      ytdMinor: '0',
+      ytdTaxedMinor: '600000000',
+      panAvailable: true,
+      auditRequired: false,
+    });
+    assert.equal(residualLater.section, '393(1) [Table Sl. No. 6(ii)]');
+    assert.equal(residualLater.taxableMinor, '1000000');
+    assert.equal(residualLater.rateBp, 200);
+    assert.equal(residualLater.tdsMinor, '20000');
+
+    assert.throws(() => pay({ ytdTaxedMinor: '-1.00' }), /negative/);
+  });
+
   test('a non-individual contractor is 2% and code 1024', () => {
     const result = pay({ category: 'contractor', payeeType: 'other', amountMinor: '3500000' });
     assert.equal(result.rateBp, 200);
@@ -297,6 +453,12 @@ describe('evals, copies, and CLI', () => {
     assert.equal(good.status, 0);
     assert.equal(JSON.parse(good.stdout).tds, '5100.00');
     assert.equal(good.stderr, '');
+
+    const july = run(['--json', '{"paymentDate":"2026-07-01","payerType":"other","payeeType":"individual","category":"professional","amountMinor":"1000000","ytdMinor":"0","ytdTaxedMinor":"5100000","panAvailable":true}']);
+    assert.equal(july.status, 0);
+    assert.equal(JSON.parse(july.stdout).tdsMinor, '100000');
+    assert.equal(JSON.parse(july.stdout).tds, '1000.00');
+    assert.equal(JSON.parse(july.stdout).taxableMinor, '1000000');
 
     const uncovered = run(['--json', JSON.stringify({
       paymentDate: '2026-06-01',

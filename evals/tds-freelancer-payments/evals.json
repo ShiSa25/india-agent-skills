@@ -45,6 +45,31 @@
       }
     },
     {
+      "id": "professional-after-crossing",
+      "prompt": "That designer was already taxed on ₹51,000 this year. This bill is ₹10,000 on 1 July 2026 and the PAN is on file. What TDS is due on this bill?",
+      "expect": {
+        "input": {
+          "paymentDate": "2026-07-01",
+          "payerType": "other",
+          "payeeType": "individual",
+          "category": "professional",
+          "amountMinor": "1000000",
+          "ytdMinor": "0",
+          "ytdTaxedMinor": "5100000",
+          "panAvailable": true
+        },
+        "tdsMinor": "100000",
+        "tds": "1000.00",
+        "taxableMinor": "1000000",
+        "rateBp": 1000,
+        "section": "393(1) [Table Sl. No. 6(iii)]",
+        "oldSection": "194J",
+        "paymentCode": "1027",
+        "thresholdHit": true,
+        "confirm": true
+      }
+    },
+    {
       "id": "contractor-single-sum",
       "prompt": "Contractor who is an individual sent one bill of ₹35,000 on 1 June 2026. Nothing earlier this year. PAN on file. TDS?",
       "expect": {
