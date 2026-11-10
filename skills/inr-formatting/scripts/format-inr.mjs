@@ -217,7 +217,8 @@ function sanitizeAmount(input) {
   if (Buffer.byteLength(input, 'utf8') > MAX_BYTES) throw new Error('Input is longer than 10 KB.');
   const normalised = input.normalize('NFKC').trim();
   if (CONTROLS.test(normalised)) throw new Error('Zero-width, bidi, or control characters are not allowed.');
-  return normalised.replaceAll(',', '').replaceAll(' ', '').replaceAll('_', '').replace(/^₹/, '');
+  // The sign may come before the rupee sign, which is how formatINR writes a negative: -₹1,234.00.
+  return normalised.replaceAll(',', '').replaceAll(' ', '').replaceAll('_', '').replace(/^(-?)₹/, '$1');
 }
 
 function formatGrouped(rupees, paise, ctx, flags) {

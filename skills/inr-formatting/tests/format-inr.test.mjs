@@ -111,6 +111,15 @@ describe('grouping, words, and input cleaning', () => {
     assert.equal(formatINR('\uFF11\uFF12\uFF13\uFF14.50'), '₹1,234.50');
   });
 
+  test('a negative written the way formatINR writes it is read back', () => {
+    assert.equal(formatINR('-₹1,234.50'), '-₹1,234.50');
+    assert.equal(formatINR('₹-1,234.50'), '-₹1,234.50');
+    assert.equal(formatINR(formatINR('-1234567.50')), '-₹12,34,567.50');
+    assert.equal(reportInr('-₹0.50').paise, '-50');
+    assert.equal(reportInr('-₹-1').valid, false);
+    assert.equal(reportInr('--₹1').valid, false);
+  });
+
   test('a small amount does not confirm, and one lakh does because of the short form', () => {
     const zero = reportInr('0');
     assert.equal(zero.confirm, false);

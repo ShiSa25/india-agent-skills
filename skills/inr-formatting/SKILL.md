@@ -65,7 +65,7 @@ Rules data is `scripts/_rules/inr.json`, as of 2026-11-01. Place values are read
 - `0` and `0.00` are `₹0.00` and `Rupees Zero Only`. `-0.50` is `-₹0.50` and `Minus Rupees Zero and Fifty Paise Only`.
 - `100000` rupees is one lakh. The same digits as a bigint are paise: `formatINR(100n)` is `₹1.00`, `formatINR('100')` is `₹100.00`.
 - `12345678901234567890` paise is `₹1,23,45,67,89,01,23,45,678.90`, compact `1,234.57 Cr Cr`, and the words in the eval for `bigint-paise`. `confirm` is true.
-- Commas and a leading `₹` are stripped on input. Fullwidth digits are NFKC-normalised. A zero-width or bidi character is rejected. Input over 10 KB is rejected.
+- Commas and a leading `₹` are stripped on input. A minus sign may come before or after the `₹`, so the tool reads back its own `-₹1,234.00`. Fullwidth digits are NFKC-normalised. A zero-width or bidi character is rejected. Input over 10 KB is rejected.
 - `{"rupees":"1.00","paise":"50"}` is rejected because the two amounts disagree.
 - Tests compare these strings directly. They do not call `Intl` and they do not depend on the Node ICU version.
 - `99` crore is `Rupees Ninety-Nine Crore Only`. The hundred-crore wording starts at `100` crore.
