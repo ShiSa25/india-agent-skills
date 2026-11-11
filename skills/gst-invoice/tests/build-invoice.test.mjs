@@ -260,6 +260,19 @@ describe('Rule 46 invoice', () => {
     assert.ok(noRate.errors.some((error) => error.includes('never inferred')));
   });
 
+  test('a supplier with no usable state reports the supplier errors, not a crash', () => {
+    const shortGstin = invoice({ supplier: party('29AABCC1234A1Z', undefined, 'Bengaluru', '560001') });
+    assert.equal(shortGstin.valid, false);
+    assert.ok(shortGstin.errors.some((error) => error.startsWith('supplier GSTIN: ')));
+    assert.ok(shortGstin.errors.includes('supplier.stateCode is required.'));
+    assert.equal(shortGstin.errors.some((error) => error.includes('Cannot read')), false);
+    const noGstin = invoice({ supplier: { name: 'Sample Party', address: '1 Test Road, Bengaluru' } });
+    assert.equal(noGstin.valid, false);
+    assert.ok(noGstin.errors.includes('supplier.gstin is required.'));
+    assert.ok(noGstin.errors.includes('supplier.stateCode is required.'));
+    assert.equal(noGstin.errors.some((error) => error.includes('Cannot read')), false);
+  });
+
   test('per-line rounding is not recomputed on the invoice sum', () => {
     const result = invoice({
       lines: [
