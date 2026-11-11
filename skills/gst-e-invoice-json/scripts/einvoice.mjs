@@ -88,7 +88,7 @@ function assemble(source) {
   }
   if (errors.length > 0) return fail(errors, warnings, false);
 
-  const items = invoice.lines.map((line, index) => lineItem(line, index));
+  const items = invoice.lines.map((line, index) => lineItem(line, index, warnings));
   const ass = sumField(items, 'AssAmt');
   const igst = sumField(items, 'IgstAmt');
   const cgst = sumField(items, 'CgstAmt');
@@ -175,9 +175,14 @@ function assemble(source) {
   };
 }
 
-function lineItem(line, index) {
+function lineItem(line, index, warnings) {
   const taxable = absMinor(parseAmount(line.taxable));
   const discount = absMinor(parseAmount(line.discount ?? '0'));
+  const gross = taxable + discount;
+  const price = unitPrice(gross, line.quantity);
+  if (!price.exact) {
+    warnings.push(`ItemList[${index}].UnitPrice times Qty is not TotAmt to the paisa. A unit price has at most 3 decimal places.`);
+  }
   const igst = absMinor(parseAmount(line.igst));
   const cgst = absMinor(parseAmount(line.cgst));
   const sgst = absMinor(parseAmount(line.sgst)) + absMinor(parseAmount(line.utgst ?? '0'));
@@ -187,8 +192,8 @@ function lineItem(line, index) {
     PrdDesc: line.description,
     IsServc: line.service ? 'Y' : 'N',
     HsnCd: line.hsn,
-    UnitPrice: formatMinor(unitPrice(taxable, line.quantity)),
-    TotAmt: formatMinor(taxable + discount),
+    UnitPrice: price.text,
+    TotAmt: formatMinor(gross),
     Discount: formatMinor(discount),
     AssAmt: formatMinor(taxable),
     GstRt: bpToPercent(line.rateBp),
@@ -202,12 +207,34 @@ function lineItem(line, index) {
   return item;
 }
 
-function unitPrice(taxable, quantity) {
-  if (typeof quantity === 'string' && /^[1-9][0-9]*$/.test(quantity)) {
-    const qty = BigInt(quantity);
-    if (qty !== 0n && taxable % qty === 0n) return taxable / qty;
-  }
-  return taxable;
+/**
+ * Price per unit: the gross amount (before discount) over the quantity, half-up.
+ * The schema gives a unit price 3 decimal places, so the sum is done in thousandths
+ * of a rupee and of a unit. A line with no usable quantity is one unit.
+ * @param {bigint} gross paise
+ * @param {string|null|undefined} quantity decimal string with at most 3 places
+ * @returns {{ text: string, exact: boolean }} exact is false when price times quantity is not the gross to the paisa
+ */
+function unitPrice(gross, quantity) {
+  const qty = quantityMilli(quantity);
+  if (qty === null) return { text: formatMinor(gross), exact: true };
+  const milli = divHalfUp(gross * 10000n, qty);
+  return {
+    text: milli % 10n === 0n ? formatMinor(milli / 10n) : formatMinor(milli, 3),
+    exact: divHalfUp(milli * qty, 10000n) === gross,
+  };
+}
+
+function quantityMilli(quantity) {
+  const match = typeof quantity === 'string' ? /^([0-9]+)(?:\.([0-9]{1,3}))?$/.exec(quantity) : null;
+  if (!match) return null;
+  const milli = BigInt(`${match[1]}${(match[2] ?? '').padEnd(3, '0')}`);
+  return milli === 0n ? null : milli;
+}
+
+function divHalfUp(numerator, denominator) {
+  const quotient = numerator / denominator;
+  return (numerator % denominator) * 2n >= denominator ? quotient + 1n : quotient;
 }
 
 function checkPayload(payload, meta) {

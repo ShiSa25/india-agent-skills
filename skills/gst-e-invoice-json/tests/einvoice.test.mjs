@@ -136,6 +136,36 @@ describe('schema 1.1', () => {
     assert.equal(built.einvoice.RefDtls.PrecDocDtls[0].InvNo, 'INV/2026-27/0001');
     assert.equal(built.einvoice.RefDtls.PrecDocDtls[0].InvDt, '01/04/2026');
   });
+
+  test('unit price is the gross over the quantity, to 3 decimal places', () => {
+    const line = (fields) => ({ description: 'Widget', hsn: '8471', unit: 'NOS', rateBp: 1800, ...fields });
+    const built = buildEinvoice(
+      invoice({
+        lines: [
+          line({ quantity: '3', taxable: '100.00' }),
+          line({ quantity: '2.5', taxable: '100.00' }),
+          line({ quantity: '4', taxable: '900.00', discount: '100.00' }),
+          line({ quantity: '1', taxable: '42000.00' }),
+        ],
+      }),
+    );
+    assert.equal(built.valid, true);
+    const items = built.einvoice.ItemList;
+    assert.deepEqual([items[0].Qty, items[0].UnitPrice, items[0].TotAmt], ['3', '33.333', '100.00']);
+    assert.deepEqual([items[1].Qty, items[1].UnitPrice, items[1].TotAmt], ['2.5', '40.00', '100.00']);
+    assert.deepEqual([items[2].UnitPrice, items[2].TotAmt, items[2].Discount, items[2].AssAmt], ['250.00', '1000.00', '100.00', '900.00']);
+    assert.deepEqual([items[3].UnitPrice, items[3].TotAmt], ['42000.00', '42000.00']);
+    assert.equal(built.warnings.some((warning) => warning.includes('UnitPrice')), false);
+  });
+
+  test('a unit price that 3 decimal places cannot hold is flagged', () => {
+    const built = buildEinvoice(
+      invoice({ lines: [{ description: 'Washer', hsn: '7318', quantity: '7000', unit: 'NOS', taxable: '100.00', rateBp: 1800 }] }),
+    );
+    assert.equal(built.valid, true);
+    assert.equal(built.einvoice.ItemList[0].UnitPrice, '0.014');
+    assert.ok(built.warnings.includes('ItemList[0].UnitPrice times Qty is not TotAmt to the paisa. A unit price has at most 3 decimal places.'));
+  });
 });
 
 describe('applicability', () => {
