@@ -136,6 +136,132 @@ describe('schema 1.1', () => {
     assert.equal(built.einvoice.RefDtls.PrecDocDtls[0].InvNo, 'INV/2026-27/0001');
     assert.equal(built.einvoice.RefDtls.PrecDocDtls[0].InvDt, '01/04/2026');
   });
+
+  test('unit price is the gross over the quantity, to 3 decimal places', () => {
+    const line = (fields) => ({ description: 'Widget', hsn: '8471', unit: 'NOS', rateBp: 1800, ...fields });
+    const built = buildEinvoice(
+      invoice({
+        lines: [
+          line({ quantity: '3', taxable: '100.00' }),
+          line({ quantity: '2.5', taxable: '100.00' }),
+          line({ quantity: '4', taxable: '900.00', discount: '100.00' }),
+          line({ quantity: '1', taxable: '42000.00' }),
+        ],
+      }),
+    );
+    assert.equal(built.valid, true);
+    const items = built.einvoice.ItemList;
+    assert.deepEqual([items[0].Qty, items[0].UnitPrice, items[0].TotAmt], ['3', '33.333', '100.00']);
+    assert.deepEqual([items[1].Qty, items[1].UnitPrice, items[1].TotAmt], ['2.5', '40.00', '100.00']);
+    assert.deepEqual([items[2].UnitPrice, items[2].TotAmt, items[2].Discount, items[2].AssAmt], ['250.00', '1000.00', '100.00', '900.00']);
+    assert.deepEqual([items[3].UnitPrice, items[3].TotAmt], ['42000.00', '42000.00']);
+    assert.equal(built.warnings.some((warning) => warning.includes('UnitPrice')), false);
+  });
+
+  test('a unit price that 3 decimal places cannot hold is flagged', () => {
+    const built = buildEinvoice(
+      invoice({ lines: [{ description: 'Washer', hsn: '7318', quantity: '7000', unit: 'NOS', taxable: '100.00', rateBp: 1800 }] }),
+    );
+    assert.equal(built.valid, true);
+    assert.equal(built.einvoice.ItemList[0].UnitPrice, '0.014');
+    assert.ok(built.warnings.includes('ItemList[0].UnitPrice times Qty is not TotAmt to the paisa. A unit price has at most 3 decimal places.'));
+  });
+
+  test('a quantity below 1 and a zero gross still divide', () => {
+    const line = (fields) => ({ description: 'Widget', hsn: '8471', unit: 'NOS', rateBp: 1800, ...fields });
+    const built = buildEinvoice(invoice({
+      lines: [
+        line({ quantity: '0.5', taxable: '100.00' }),
+        line({ quantity: '0.001', taxable: '100.00' }),
+        line({ quantity: '2', taxable: '0.00' }),
+        line({ quantity: '  3  ', taxable: '100.00' }),
+      ],
+    }));
+    assert.equal(built.valid, true);
+    const items = built.einvoice.ItemList;
+    assert.deepEqual([items[0].Qty, items[0].UnitPrice, items[0].TotAmt], ['0.5', '200.00', '100.00']);
+    assert.deepEqual([items[1].Qty, items[1].UnitPrice, items[1].TotAmt], ['0.001', '100000.00', '100.00']);
+    assert.deepEqual([items[2].Qty, items[2].UnitPrice, items[2].TotAmt], ['2', '0.00', '0.00']);
+    assert.deepEqual([items[3].Qty, items[3].UnitPrice, items[3].TotAmt], ['3', '33.333', '100.00']);
+    assert.equal(built.warnings.some((warning) => warning.includes('UnitPrice')), false);
+  });
+
+  test('a missing quantity is one unit and Qty is omitted', () => {
+    const built = buildEinvoice(invoice({
+      lines: [{ description: 'Consulting', hsn: '998313', taxable: '100.00', rateBp: 1800, service: true }],
+    }));
+    assert.equal(built.valid, true);
+    assert.equal(built.confirm, false);
+    assert.equal(built.einvoice.ItemList[0].Qty, undefined);
+    assert.equal(built.einvoice.ItemList[0].UnitPrice, '100.00');
+    assert.equal(built.einvoice.ItemList[0].TotAmt, '100.00');
+    assert.equal(built.warnings.some((warning) => warning.includes('UnitPrice')), false);
+
+    const base = invoice();
+    for (const quantity of [null, undefined, '']) {
+      const copy = structuredClone(base);
+      copy.invoice.lines[0].quantity = quantity;
+      const again = buildEinvoice(copy);
+      assert.equal(again.valid, true, String(quantity));
+      assert.equal(again.einvoice.ItemList[0].Qty, undefined, String(quantity));
+      assert.equal(again.einvoice.ItemList[0].UnitPrice, '42000.00', String(quantity));
+      assert.equal(again.einvoice.ItemList[0].TotAmt, '42000.00', String(quantity));
+      assert.equal(again.warnings.some((warning) => warning.includes('UnitPrice')), false, String(quantity));
+    }
+  });
+
+  test('a zero quantity is rejected and is not priced as one unit', () => {
+    const zeroMsg = 'Quantity is zero. Pass a positive decimal with at most 3 places, or omit the quantity to price the line as one unit.';
+    for (const quantity of ['0', '0.0', '0.00', '0.000', '00', '  0.000  ', ' 00 ']) {
+      const source = invoice({
+        lines: [{ description: 'Widget', hsn: '8471', quantity, unit: 'NOS', taxable: '100.00', rateBp: 1800 }],
+      });
+      assert.equal(source.valid, true, quantity);
+      const built = buildEinvoice(source);
+      assert.equal(built.valid, false, quantity);
+      assert.equal(built.einvoice, null, quantity);
+      assert.equal(built.confirm, false, quantity);
+      assert.deepEqual(built.errors, [{ path: 'ItemList[0].Qty', msg: zeroMsg }], quantity);
+      assert.equal(built.warnings.some((warning) => warning.includes('UnitPrice')), false, quantity);
+    }
+
+    const free = invoice({
+      lines: [{ description: 'Widget', hsn: '8471', quantity: '0', unit: 'NOS', taxable: '0.00', rateBp: 1800 }],
+    });
+    assert.equal(free.valid, true);
+    const rejected = buildEinvoice(free);
+    assert.equal(rejected.einvoice, null);
+    assert.deepEqual(rejected.errors, [{ path: 'ItemList[0].Qty', msg: zeroMsg }]);
+
+    const mixed = invoice({
+      lines: [
+        { description: 'Widget', hsn: '8471', quantity: '2', unit: 'NOS', taxable: '100.00', rateBp: 1800 },
+        { description: 'Washer', hsn: '7318', quantity: '0.000', unit: 'NOS', taxable: '50.00', rateBp: 1800 },
+      ],
+    });
+    const both = buildEinvoice(mixed);
+    assert.equal(both.valid, false);
+    assert.equal(both.einvoice, null);
+    assert.deepEqual(both.errors, [{ path: 'ItemList[1].Qty', msg: zeroMsg }]);
+  });
+
+  test('a provided quantity that is not a positive 3-decimal string is rejected', () => {
+    const base = invoice({
+      lines: [{ description: 'Widget', hsn: '8471', quantity: '1', unit: 'NOS', taxable: '100.00', rateBp: 1800 }],
+    });
+    assert.equal(base.valid, true);
+    const badMsg = 'Quantity must be a positive decimal string with at most 3 places.';
+    for (const quantity of ['-1', '1.2345', '+3', '1e2', '2.', ' 3 ', 3, 0]) {
+      const copy = structuredClone(base);
+      copy.invoice.lines[0].quantity = quantity;
+      const built = buildEinvoice(copy);
+      assert.equal(built.valid, false, String(quantity));
+      assert.equal(built.einvoice, null, String(quantity));
+      assert.equal(built.confirm, false, String(quantity));
+      assert.deepEqual(built.errors, [{ path: 'ItemList[0].Qty', msg: badMsg }], String(quantity));
+      assert.equal(built.warnings.some((warning) => warning.includes('UnitPrice')), false, String(quantity));
+    }
+  });
 });
 
 describe('applicability', () => {

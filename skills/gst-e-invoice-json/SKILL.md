@@ -71,6 +71,8 @@ Rules data is `scripts/_rules/gst.json`, as of 2026-11-01.
 - AATO under ₹10 crore does not get the 30-day warning. A reporting date before 1 April 2025 does not either.
 - A domestic recipient without a GSTIN is not built. B2C is out of scope. Say so, and do not invent `B2C`.
 - Supplier PIN and location are required here even though a paper invoice can omit them. Address lines longer than 100 characters are rejected for `Addr1`.
+- `UnitPrice` is the gross amount (`TotAmt`, taxable value plus discount) divided by `Qty`, half-up to 3 decimal places. ₹100.00 for 3 units is `33.333`. Schema 1.1 defines that gross as the unit price times the quantity. A missing quantity (`undefined`, `null`, or empty) is one unit, and `Qty` is left off.
+- A provided quantity must be a positive decimal string with at most 3 places. Zero (`0`, `0.0`, `0.000`, `00`, including values `gst-invoice` has already trimmed) and any other value (`-1`, `1.2345`, `+3`, `1e2`, `2.`, ` 3 `, or a JSON number) is an error and no payload is built. Those values are not priced as one unit. When 3 decimal places cannot hold the price (₹100.00 for 7,000 units is `0.014`), the build still returns the payload and adds a warning.
 - Item tax is either IGST or CGST plus SGST/UTGST, not both. UTGST is carried in `SgstAmt`, which is the schema's shared field.
 - A gap of ₹1.01 on `AssVal` or `TotInvVal` is an error. A gap of ₹1.00 is only a warning.
 - Do not add an IRN. The portal generates it. Do not tell the user the payload has been registered.

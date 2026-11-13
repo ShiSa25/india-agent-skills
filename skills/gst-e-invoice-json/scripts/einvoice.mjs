@@ -88,7 +88,7 @@ function assemble(source) {
   }
   if (errors.length > 0) return fail(errors, warnings, false);
 
-  const items = invoice.lines.map((line, index) => lineItem(line, index));
+  const items = invoice.lines.map((line, index) => lineItem(line, index, warnings, errors));
   const ass = sumField(items, 'AssAmt');
   const igst = sumField(items, 'IgstAmt');
   const cgst = sumField(items, 'CgstAmt');
@@ -175,9 +175,16 @@ function assemble(source) {
   };
 }
 
-function lineItem(line, index) {
+function lineItem(line, index, warnings, errors) {
   const taxable = absMinor(parseAmount(line.taxable));
   const discount = absMinor(parseAmount(line.discount ?? '0'));
+  const gross = taxable + discount;
+  const price = unitPrice(gross, line.quantity);
+  if (price.error) {
+    errors.push({ path: `ItemList[${index}].Qty`, msg: price.error });
+  } else if (!price.exact) {
+    warnings.push(`ItemList[${index}].UnitPrice times Qty is not TotAmt to the paisa. A unit price has at most 3 decimal places.`);
+  }
   const igst = absMinor(parseAmount(line.igst));
   const cgst = absMinor(parseAmount(line.cgst));
   const sgst = absMinor(parseAmount(line.sgst)) + absMinor(parseAmount(line.utgst ?? '0'));
@@ -187,8 +194,8 @@ function lineItem(line, index) {
     PrdDesc: line.description,
     IsServc: line.service ? 'Y' : 'N',
     HsnCd: line.hsn,
-    UnitPrice: formatMinor(unitPrice(taxable, line.quantity)),
-    TotAmt: formatMinor(taxable + discount),
+    UnitPrice: price.text,
+    TotAmt: formatMinor(gross),
     Discount: formatMinor(discount),
     AssAmt: formatMinor(taxable),
     GstRt: bpToPercent(line.rateBp),
@@ -197,17 +204,50 @@ function lineItem(line, index) {
     SgstAmt: formatMinor(sgst),
     TotItemVal: formatMinor(total),
   };
-  if (line.quantity) item.Qty = line.quantity;
+  if (price.qtyText !== undefined) item.Qty = price.qtyText;
   if (line.unit) item.Unit = line.unit;
   return item;
 }
 
-function unitPrice(taxable, quantity) {
-  if (typeof quantity === 'string' && /^[1-9][0-9]*$/.test(quantity)) {
-    const qty = BigInt(quantity);
-    if (qty !== 0n && taxable % qty === 0n) return taxable / qty;
-  }
-  return taxable;
+/**
+ * Unit price is the gross (before discount) divided by the quantity, half-up.
+ * Schema 1.1 gives the price 3 decimal places and defines the gross as that
+ * price times the quantity. A missing quantity is one unit. Zero and any other
+ * value that is not a positive 3-decimal quantity fail the build: they are not
+ * priced as one unit, and Qty is not copied onto an exact unit price.
+ * @param {bigint} gross paise
+ * @param {unknown} quantity
+ * @returns {{ text: string, exact: boolean, error?: string, qtyText?: string }}
+ */
+function unitPrice(gross, quantity) {
+  const parsed = readQuantity(quantity);
+  if (parsed.error) return { text: formatMinor(0n), exact: false, error: parsed.error };
+  if (parsed.milli === null) return { text: formatMinor(gross), exact: true };
+  const qty = parsed.milli;
+  const milli = divHalfUp(gross * 10000n, qty);
+  return {
+    text: milli % 10n === 0n ? formatMinor(milli / 10n) : formatMinor(milli, 3),
+    exact: divHalfUp(milli * qty, 10000n) === gross,
+    qtyText: parsed.text,
+  };
+}
+
+const ZERO_QTY = 'Quantity is zero. Pass a positive decimal with at most 3 places, or omit the quantity to price the line as one unit.';
+const BAD_QTY = 'Quantity must be a positive decimal string with at most 3 places.';
+
+function readQuantity(quantity) {
+  if (quantity === undefined || quantity === null || quantity === '') return { milli: null };
+  if (typeof quantity !== 'string') return { error: BAD_QTY };
+  const match = /^([0-9]+)(?:\.([0-9]{1,3}))?$/.exec(quantity);
+  if (!match) return { error: BAD_QTY };
+  const milli = BigInt(`${match[1]}${(match[2] ?? '').padEnd(3, '0')}`);
+  if (milli === 0n) return { error: ZERO_QTY };
+  return { milli, text: quantity };
+}
+
+function divHalfUp(numerator, denominator) {
+  const quotient = numerator / denominator;
+  return (numerator % denominator) * 2n >= denominator ? quotient + 1n : quotient;
 }
 
 function checkPayload(payload, meta) {
