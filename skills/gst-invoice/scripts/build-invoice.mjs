@@ -234,7 +234,7 @@ function assemble(input) {
   const lines = readLines(input.lines, supplyKind, documentType, pack, errors, warnings, noteConfirm);
   const delivery = readDelivery(input, recipient, supplyType, errors);
 
-  if (supplier && place && supplier.state.code !== supplier.gstinState && supplier.gstinState) {
+  if (supplier?.state && place && supplier.state.code !== supplier.gstinState && supplier.gstinState) {
     errors.push(`Supplier GSTIN state ${supplier.gstinState} does not match state ${supplier.state.code}.`);
   }
   if (recipient?.gstinState && recipient.state && recipient.gstinState !== recipient.state.code) {
