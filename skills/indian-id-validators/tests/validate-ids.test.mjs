@@ -81,6 +81,24 @@ describe('PAN', () => {
     assert.ok(validatePan('A'.repeat(10241)).errors.some((error) => error.includes('10 KB')));
     assert.equal(validatePan('ABCPE1234').valid, false);
   });
+
+  test('a letter whose uppercase form is ASCII is still a look-alike', () => {
+    const dotless = validatePan('A\u0131CPE1234F');
+    assert.equal(dotless.valid, false);
+    assert.equal(dotless.normalized, '');
+    assert.ok(dotless.errors.some((error) => error.includes('look-alikes')));
+    const sharp = validatePan('A\u00DFPE1234F');
+    assert.equal(sharp.valid, false);
+    assert.ok(sharp.errors.some((error) => error.includes('look-alikes')));
+    assert.equal(validateTan('DEL\u013112345B').valid, false);
+    const ifsc = validateIfsc('SB\u0131N0001234');
+    assert.equal(ifsc.valid, false);
+    assert.equal(ifsc.normalized, '');
+    assert.ok(ifsc.errors.some((error) => error.includes('look-alikes')));
+    const lower = validatePan('abcpe1234f');
+    assert.equal(lower.valid, true);
+    assert.equal(lower.normalized, 'ABCPE1234F');
+  });
 });
 
 describe('TAN', () => {

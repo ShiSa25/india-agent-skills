@@ -32,7 +32,7 @@ export function prepare(input, options = {}) {
   let cleaned = '';
   for (const ch of trimmed) {
     if (isSeparator(ch)) continue;
-    cleaned += options.uppercase ? ch.toUpperCase() : ch;
+    cleaned += options.uppercase && ch >= 'a' && ch <= 'z' ? ch.toUpperCase() : ch;
   }
   return { cleaned, warnings };
 }
