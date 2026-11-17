@@ -68,6 +68,31 @@ describe('SPEC vectors', () => {
 
     const onDay = lintDlt({ ...input, asOf: '2024-10-01' });
     assert.equal(onDay.errors.some((item) => item.code === 'url-not-whitelisted'), true);
+
+    const kelvinHost = lintDlt(good({
+      message: 'Pay Acme at https://o\u212A.com/a today',
+      variables: ['https://o\u212A.com/a'],
+      whitelist: ['https://ok.com/a'],
+    }));
+    assert.equal(kelvinHost.valid, false);
+    assert.equal(kelvinHost.errors.some((item) => item.code === 'url-not-whitelisted'), true);
+
+    const shifted = lintDlt(good({
+      message: '\u0130https://evil.example/phish',
+      variables: ['x'],
+      template: 'Your OTP is {#var#}. Do not share it. - Acme',
+      whitelist: [],
+    }));
+    const shiftedError = shifted.errors.find((item) => item.code === 'url-not-whitelisted');
+    assert.ok(shiftedError);
+    assert.match(shiftedError.message, /set: https:\/\/evil\.example\/phish$/);
+
+    const shiftedAllowed = lintDlt(good({
+      message: '\u0130https://pay.example/x today',
+      variables: ['x'],
+      whitelist: ['https://Pay.example/x'],
+    }));
+    assert.equal(shiftedAllowed.errors.some((item) => item.code === 'url-not-whitelisted'), false);
   });
 
   test('{#var#} as the last word is an operator warning', () => {
@@ -184,6 +209,21 @@ describe('SPEC vectors', () => {
     assert.equal(optOut(withStop), false);
 
     assert.equal(optOut(lintDlt(good({ sentAtIst: undefined }))), false);
+
+    const kelvinOptOut = lintDlt(good({
+      ...sale,
+      template: 'Acme sale {#var#} percent off today. Reply bloc\u212A',
+      message: 'Acme sale 10 percent off today. Reply bloc\u212A',
+      sentAtIst: '16:30',
+    }));
+    assert.equal(optOut(kelvinOptOut), true);
+    const asciiBlock = lintDlt(good({
+      ...sale,
+      template: 'Acme sale {#var#} percent off today. Reply BLOCK',
+      message: 'Acme sale 10 percent off today. Reply BLOCK',
+      sentAtIst: '16:30',
+    }));
+    assert.equal(optOut(asciiBlock), false);
   });
 });
 

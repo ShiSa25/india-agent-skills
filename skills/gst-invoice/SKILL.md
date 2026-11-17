@@ -75,7 +75,7 @@ Rules data is `scripts/_rules/gst.json`, as of 2026-11-01. Do not hardcode a rat
 - ₹0.03 at 1,800 bp is ₹0.01 of IGST. ₹0.02 is ₹0.00. Two lines of ₹0.03 sum to ₹0.02, not the tax on ₹0.06.
 - ₹25.00 at 18% inter-state is IGST ₹4.50, which section 170 rounds to ₹5.00. The same value intra-state is CGST ₹2.25 and SGST ₹2.25, which round to ₹2.00 and ₹2.00. Rounding each head is not the same as rounding the total.
 - 0.25% (25 bp) intra-state on ₹100 is 13 paise and 13 paise. IGST on the same value is 25 paise. The halves are rounded separately.
-- `INV/2026-27/0001` is 16 characters and is accepted. `INV/2026-27/00001` is 17 and is rejected. Fullwidth digits in the number are mapped. A fullwidth Latin letter, a superscript digit in a quantity, or another compatibility look-alike is rejected rather than folded into ASCII.
+- `INV/2026-27/0001` is 16 characters and is accepted. `INV/2026-27/00001` is 17 and is rejected. Fullwidth digits in the number, the invoice date, and a line amount are mapped to ASCII. A fullwidth Latin letter, a superscript digit in a quantity, or another compatibility look-alike is rejected rather than folded into ASCII.
 - A credit note of −₹1,000 at 18% inter-state is IGST −₹180.
 - An export LUT invoice shows rate 0 on the line and keeps `nominalRateBp` for the rate you typed. The charged tax is zero.
 - Pass `electronicInvoice: true` only for an electronic invoice under the Information Technology Act, 2000, where Rule 46 drops the signature.

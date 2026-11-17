@@ -292,6 +292,20 @@ export function decideRazorpayEvent(input) {
         warnings,
       });
     }
+    const expected = optionalMinor(input.expectedMinor, 'expectedMinor');
+    if ((amount !== null && amount !== captured) || (expected !== null && expected !== captured)) {
+      return decision(domain, rules, {
+        ...base,
+        valid: false,
+        httpStatus: 200,
+        action: 'amount_mismatch',
+        fulfil: false,
+        duplicate: false,
+        storeEventId: true,
+        errors: ['The capture amount does not match the amount already stored. Do not change capturedMinor and do not ship.'],
+        warnings: [],
+      });
+    }
     return decision(domain, rules, {
       ...base,
       valid: true,
@@ -301,7 +315,7 @@ export function decideRazorpayEvent(input) {
       duplicate: false,
       storeEventId: true,
       state: state === 'refunded' ? 'refunded' : 'captured',
-      capturedMinor: nextCaptured.toString(),
+      capturedMinor: captured.toString(),
       errors: [],
       warnings: ['payment is already fulfilled; do not ship again'],
     });

@@ -32,6 +32,7 @@ describe('SPEC dates, with the RBI periods that were opened', () => {
     assert.throws(() => invoice({ invoiceDate: '2026-04-0\u00B2' }), /invoiceDate/);
     assert.throws(() => invoice({ currency: '\u2160NR' }), /currency/);
     assert.throws(() => invoice({ clientCountry: '\u0131ndia' }), /look-alike/);
+    assert.throws(() => invoice({ clientCountry: 'Bra\u1E9Eil' }), /look-alike/);
     const wide = invoice({ invoiceDate: '\uFF12\uFF10\uFF12\uFF16-\uFF10\uFF14-\uFF10\uFF11' });
     assert.equal(wide.fy, '2026-27');
     const india = invoice({ clientCountry: 'india' });

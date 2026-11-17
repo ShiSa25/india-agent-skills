@@ -4,8 +4,9 @@
  * form is only an ASCII space or hyphen becomes that separator.
  * Letters and digits that become ASCII only through compatibility decomposition
  * or default case folding (long s, Kelvin sign, ligatures, Roman numerals,
- * fullwidth Latin, dotless i, sharp s, superscript and circled digits) are
- * left unchanged so a later charset or decimal check rejects them.
+ * fullwidth Latin, dotless i, sharp s, capital sharp s, superscript and
+ * circled digits) are left unchanged so a later charset or decimal check
+ * rejects them.
  * This module does not call String.normalize('NFKC') on a whole value.
  */
 
@@ -106,6 +107,8 @@ export function asciiLower(text) {
  * A non-ASCII character that becomes an ASCII letter or digit under NFKC
  * or the default Unicode case mapping. Fullwidth digits and separator folds
  * are not look-alikes: callers map those on purpose.
+ * Capital sharp s (U+1E9E) lowercases to U+00DF, and only that form's
+ * uppercase is the ASCII letters "SS".
  * @param {string} text
  */
 export function hasFoldedLookalike(text) {
@@ -137,6 +140,8 @@ function isFoldedLookalike(ch) {
   if (upper !== ch && /[A-Z]/.test(upper)) return true;
   const lower = ch.toLowerCase();
   if (lower !== ch && /[a-z]/.test(lower)) return true;
+  const caseFold = lower.toUpperCase();
+  if (caseFold !== ch && /^[A-Z]+$/.test(caseFold)) return true;
   return false;
 }
 

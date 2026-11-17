@@ -138,7 +138,7 @@ function assemble(input) {
   if (!['invoice', 'credit-note', 'debit-note'].includes(documentType)) {
     errors.push('documentType must be invoice, credit-note, or debit-note.');
   }
-  const invoiceDate = readDate(input.invoiceDate, 'invoiceDate', errors);
+  const invoiceDate = readDate(input.invoiceDate, 'invoiceDate', errors, warnings);
   const pack = invoiceDate ? loadPack(invoiceDate) : loadPack('2026-11-01');
   const mark = (rule) => {
     if (needsConfirm(rule)) confirm = true;
@@ -228,7 +228,7 @@ function assemble(input) {
   if (documentType === 'credit-note' || documentType === 'debit-note') {
     original = {
       number: readText(input.originalInvoiceNumber, 'originalInvoiceNumber', errors, { max: 16 }),
-      date: readDate(input.originalInvoiceDate, 'originalInvoiceDate', errors),
+      date: readDate(input.originalInvoiceDate, 'originalInvoiceDate', errors, warnings),
     };
     if (original.date && invoiceDate && original.date > invoiceDate) {
       errors.push('originalInvoiceDate is after the note date.');
@@ -422,8 +422,8 @@ function readLines(lines, supplyKind, documentType, pack, errors, warnings, note
     } else if (!service) {
       errors.push(`${label}.unit is required for goods (Rule 46(i)).`);
     }
-    const taxableMinor = readMinor(line.taxable, `${label}.taxable`, errors);
-    const discountMinor = line.discount === undefined ? 0n : readMinor(line.discount, `${label}.discount`, errors) ?? 0n;
+    const taxableMinor = readMinor(line.taxable, `${label}.taxable`, errors, warnings);
+    const discountMinor = line.discount === undefined ? 0n : readMinor(line.discount, `${label}.discount`, errors, warnings) ?? 0n;
     if (taxableMinor !== null && documentType === 'credit-note' && taxableMinor >= 0n) {
       errors.push(`${label}.taxable on a credit note must be negative.`);
     }
@@ -804,7 +804,7 @@ function fyPortal(display) {
   return `${year}-${year + 1}`;
 }
 
-function readDate(value, label, errors) {
+function readDate(value, label, errors, warnings) {
   if (typeof value !== 'string') {
     errors.push(`${label} must be a YYYY-MM-DD string.`);
     return null;
@@ -813,9 +813,11 @@ function readDate(value, label, errors) {
     errors.push(`${label} contains a zero-width or bidi control character.`);
     return null;
   }
+  const folded = foldDocumented(value.trim());
+  if (folded.fullwidthDigits || folded.compatibilitySeparators) warnings.push(`${label} was NFKC-normalised.`);
   try {
-    parseIsoDate(value.trim());
-    return value.trim();
+    parseIsoDate(folded.text);
+    return folded.text;
   } catch (error) {
     errors.push(`${label}: ${error.message}`);
     return null;
@@ -841,14 +843,16 @@ function readText(value, label, errors, { required = true, max = 300 } = {}) {
   return text;
 }
 
-function readMinor(value, label, errors) {
+function readMinor(value, label, errors, warnings) {
   if (typeof value === 'bigint') return value;
   if (typeof value !== 'string') {
     errors.push(`${label} must be a decimal string of rupees.`);
     return null;
   }
+  const folded = foldDocumented(value.trim());
+  if (folded.fullwidthDigits || folded.compatibilitySeparators) warnings.push(`${label} was NFKC-normalised.`);
   try {
-    return parseAmount(value);
+    return parseAmount(folded.text);
   } catch (error) {
     errors.push(`${label}: ${error.message}`);
     return null;

@@ -157,6 +157,19 @@ describe('Rule 46 invoice', () => {
     assert.ok(result.warnings.some((warning) => warning.includes('starts with 0')));
   });
 
+  test('fullwidth digits in a date and an amount are mapped', () => {
+    const result = invoice(
+      { invoiceDate: '\uFF12\uFF10\uFF12\uFF16-\uFF10\uFF14-\uFF11\uFF15' },
+      { taxable: '\uFF14\uFF12\uFF10\uFF10\uFF10.\uFF10\uFF10', service: true },
+    );
+    assert.equal(result.valid, true);
+    assert.equal(result.invoice.invoiceDate, '2026-04-15');
+    assert.equal(result.invoice.fy, '2026-27');
+    assert.equal(result.invoice.lines[0].taxable, '42000.00');
+    assert.ok(result.warnings.some((warning) => warning.includes('invoiceDate was NFKC-normalised')));
+    assert.ok(result.warnings.some((warning) => warning.includes('taxable was NFKC-normalised')));
+  });
+
   test('a superscript quantity and a fullwidth invoice letter are rejected', () => {
     const qty = invoice({}, { quantity: '1\u00B2', service: true });
     assert.equal(qty.valid, false);

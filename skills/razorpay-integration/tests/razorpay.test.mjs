@@ -239,6 +239,29 @@ describe('events', () => {
     const paid = decideRazorpayEvent({ ...base, event: 'order.paid', state: 'authorized' });
     assert.equal(paid.fulfil, true);
     assert.equal(decideRazorpayEvent({ ...base, event: 'payment.captured', state: 'captured' }).fulfil, false);
+    const repeat = decideRazorpayEvent({
+      ...base,
+      eventId: 'evt_repeat',
+      event: 'payment.captured',
+      state: 'captured',
+      capturedMinor: '50000',
+      amountMinor: '100',
+    });
+    assert.equal(repeat.action, 'amount_mismatch');
+    assert.equal(repeat.valid, false);
+    assert.equal(repeat.fulfil, false);
+    assert.equal(repeat.capturedMinor, '50000');
+    const same = decideRazorpayEvent({
+      ...base,
+      eventId: 'evt_same',
+      event: 'payment.captured',
+      state: 'captured',
+      capturedMinor: '50000',
+      amountMinor: '50000',
+    });
+    assert.equal(same.action, 'already_fulfilled');
+    assert.equal(same.capturedMinor, '50000');
+    assert.equal(same.fulfil, false);
     const mismatch = decideRazorpayEvent({
       ...base,
       event: 'payment.captured',
