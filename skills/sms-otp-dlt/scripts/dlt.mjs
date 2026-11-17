@@ -5,7 +5,7 @@
 import { disclaimer, CONFIRM_SENTENCE } from './_lib/disclaimer.mjs';
 import { istDate, parseIsoDate } from './_lib/fy.mjs';
 import { loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
-import { asciiUpper } from './_lib/textprep.mjs';
+import { asciiLower, asciiUpper, hasFoldedLookalike } from './_lib/textprep.mjs';
 import { prepareText, usage } from './guard.mjs';
 
 const CATEGORIES = new Map([
@@ -177,29 +177,39 @@ function checkBrand(template, brandName, brandRule, errors) {
     errors.push(issue('brand', 'brandName is required in the template.', 'operator'));
     return;
   }
-  if (!template.toLowerCase().includes(brandName.trim().toLowerCase())) {
+  const templateKey = asciiLower(template).text;
+  const brandKey = asciiLower(brandName.trim()).text;
+  if (hasFoldedLookalike(brandKey) || !templateKey.includes(brandKey)) {
     errors.push(issue('brand', 'Brand name is not present in the template.', 'operator'));
   }
 }
 
 function checkLinks(text, whitelist, callbackWhitelist, asOf, urlRule, callbackRule, errors, warnings) {
-  const allowed = new Set(asStrings(whitelist).map((item) => item.toLowerCase()));
+  const allowed = new Set();
+  for (const item of asStrings(whitelist)) {
+    const key = urlKey(item);
+    if (!hasFoldedLookalike(key)) allowed.add(key);
+  }
   const urls = findUrls(text);
-  const foldedUrls = text.normalize('NFKC');
-  if (foldedUrls !== text) {
-    for (const url of findUrls(foldedUrls)) {
-      if (!urls.includes(url)) urls.push(url);
+  const foldedSeen = new Set(urls.map((url) => url.normalize('NFKC')));
+  const hidden = [];
+  const foldedText = text.normalize('NFKC');
+  if (foldedText !== text) {
+    for (const url of findUrls(foldedText)) {
+      if (!foldedSeen.has(url)) hidden.push(url);
     }
   }
   const urlInForce = asOf >= urlRule.value.enforceFrom;
-  for (const url of urls) {
-    const key = url.toLowerCase().replace(/\/$/, '');
-    const listed = allowed.has(url.toLowerCase()) || allowed.has(key);
-    if (listed) continue;
+  const reportUrl = (url) => {
     const message = `URL is not in the whitelist set: ${url}`;
     if (urlInForce) errors.push(issue('url-not-whitelisted', message, 'trai'));
     else warnings.push(issue('url-not-whitelisted', `${message}. Whitelisting of URLs, APKs, and OTT links starts on ${urlRule.value.enforceFrom}.`, 'trai'));
+  };
+  for (const url of urls) {
+    if (listedUrl(url, allowed)) continue;
+    reportUrl(url);
   }
+  for (const url of hidden) reportUrl(url);
   const callbacks = findCallbacks(text, urlSpans(text));
   const allowedCallbacks = new Set(asStrings(callbackWhitelist).map(lastTen));
   for (const number of callbacks) {
@@ -244,7 +254,7 @@ function checkCategoryTiming(category, input, asOf, minutesRule, hoursRule, optO
 
 function normaliseCategory(value) {
   if (typeof value !== 'string') return '';
-  return CATEGORIES.get(value.trim().toLowerCase()) ?? '';
+  return CATEGORIES.get(asciiLower(value.trim()).text) ?? '';
 }
 
 function headerCharsOk(header) {
@@ -314,9 +324,19 @@ function renderTemplate(template, variables) {
   return { text: out };
 }
 
+function urlKey(url) {
+  return asciiLower(url).text.replace(/\/$/, '');
+}
+
+function listedUrl(url, allowed) {
+  if (hasFoldedLookalike(url)) return false;
+  const folded = asciiLower(url).text;
+  return allowed.has(folded) || allowed.has(urlKey(url));
+}
+
 function findUrls(text) {
   const urls = [];
-  const lower = text.toLowerCase();
+  const lower = asciiLower(text).text;
   let i = 0;
   while (i < lower.length) {
     let at = -1;
@@ -336,7 +356,7 @@ function findUrls(text) {
 
 function urlSpans(text) {
   const spans = [];
-  const lower = text.toLowerCase();
+  const lower = asciiLower(text).text;
   let i = 0;
   while (i < lower.length) {
     let at = -1;
@@ -415,7 +435,7 @@ function parseHm(value) {
 }
 
 function hasOptOut(template) {
-  const lower = template.toLowerCase();
+  const lower = asciiLower(template).text;
   return ['stop', 'opt-out', 'opt out', 'unsubscribe', 'block'].some((word) => lower.includes(word));
 }
 

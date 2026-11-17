@@ -109,11 +109,32 @@ export function jsonDecimalToken(rawBody, field) {
   const text = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
   if (typeof text !== 'string') throw new UsageError('rawBody must be a string or a Buffer');
   if (!/^[A-Za-z0-9_]{1,64}$/.test(field)) throw new UsageError('field must be an identifier');
-  const needle = `"${field}":`;
-  const at = text.indexOf(needle);
-  if (at === -1) return null;
-  let i = at + needle.length;
-  while (text[i] === ' ') i += 1;
+  const key = `"${field}":`;
+  let found = null;
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] !== '"') {
+      i += 1;
+      continue;
+    }
+    if (text.startsWith(key, i)) {
+      let j = i + key.length;
+      while (text[j] === ' ') j += 1;
+      const token = readPlainDecimal(text, j);
+      if (token === 'exponent') return null;
+      if (token) {
+        if (found !== null) return null;
+        found = token;
+        i = j + token.length;
+        continue;
+      }
+    }
+    i = skipJsonString(text, i);
+  }
+  return found;
+}
+
+function readPlainDecimal(text, i) {
   const start = i;
   if (text[i] === '-') i += 1;
   if (!isDigit(text[i])) return null;
@@ -124,8 +145,21 @@ export function jsonDecimalToken(rawBody, field) {
     while (isDigit(text[i])) i += 1;
     if (i === fraction) return null;
   }
-  if (text[i] === 'e' || text[i] === 'E') return null;
+  if (text[i] === 'e' || text[i] === 'E') return 'exponent';
   return text.slice(start, i);
+}
+
+function skipJsonString(text, i) {
+  i += 1;
+  while (i < text.length) {
+    if (text[i] === '\\') {
+      i += 2;
+      continue;
+    }
+    if (text[i] === '"') return i + 1;
+    i += 1;
+  }
+  return text.length;
 }
 
 export function decideCashfreeEvent(input) {
@@ -214,8 +248,16 @@ export function decideCashfreeEvent(input) {
   const errors = [];
   const warnings = [];
   if (success && already) {
-    action = 'already_fulfilled';
-    warnings.push('payment is already SUCCESS; do not ship again');
+    const amountCheck = comparePaymentAmount(input);
+    if (amountCheck === 'mismatch') {
+      action = 'amount_mismatch';
+      valid = false;
+      next = prior;
+      errors.push('paymentAmount does not match expectedAmount. Do not ship.');
+    } else {
+      action = 'already_fulfilled';
+      warnings.push('payment is already SUCCESS; do not ship again');
+    }
   } else if (success) {
     const amountCheck = comparePaymentAmount(input);
     if (amountCheck === 'mismatch') {

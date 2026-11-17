@@ -13,6 +13,7 @@ const repoRoot = join(here, '..', '..', '..');
 const CONFIRM = 'Confirm with the official source before relying on this.';
 const SUP = '29AABCC1234A1ZD';
 const MH = '27AABCC1234A1ZH';
+const KA2 = '29AABCC1234A2ZC';
 
 function party(gstin, stateCode, city, pin) {
   return { name: 'Sample Party', address: `1 Test Road, ${city}`, gstin, stateCode, pin, loc: city };
@@ -83,6 +84,61 @@ describe('schema 1.1', () => {
     const checked = validateEinvoice(forged);
     assert.equal(checked.valid, false);
     assert.ok(checked.errors.some((error) => error.path === 'BuyerDtls.Gstin' && error.msg.includes('URP')));
+  });
+
+  test('buyer state must match the GSTIN and IgstOnIntra follows the states', () => {
+    const built = buildEinvoice(invoice());
+    const state = structuredClone(built.einvoice);
+    state.BuyerDtls.Stcd = '29';
+    const mismatch = validateEinvoice(state);
+    assert.equal(mismatch.valid, false);
+    assert.ok(mismatch.errors.some((error) => error.path === 'BuyerDtls.Stcd' && error.msg.includes('does not match')));
+
+    const flag = structuredClone(built.einvoice);
+    flag.TranDtls.IgstOnIntra = 'Y';
+    const intraFlag = validateEinvoice(flag);
+    assert.equal(intraFlag.valid, false);
+    assert.ok(intraFlag.errors.some((error) => error.path === 'TranDtls.IgstOnIntra'));
+
+    const pin = structuredClone(built.einvoice);
+    pin.BuyerDtls.Pin = '4000';
+    const badPin = validateEinvoice(pin);
+    assert.equal(badPin.valid, false);
+    assert.ok(badPin.errors.some((error) => error.path === 'BuyerDtls.Pin'));
+
+    const sez = buildEinvoice(invoice({
+      recipient: party(KA2, '29', 'Bengaluru', '560001'),
+      placeOfSupply: '29',
+      supplyType: 'sez',
+      lut: false,
+      invoiceNumber: 'SEZ/2026-27/0001',
+    }));
+    assert.equal(sez.valid, true);
+    assert.equal(sez.einvoice.TranDtls.IgstOnIntra, 'Y');
+    const sezOff = structuredClone(sez.einvoice);
+    sezOff.TranDtls.IgstOnIntra = 'N';
+    assert.equal(validateEinvoice(sezOff).valid, false);
+
+    const intra = buildEinvoice(invoice({
+      recipient: party(KA2, '29', 'Bengaluru', '560001'),
+      placeOfSupply: '29',
+      invoiceNumber: 'INV/2026-27/0019',
+    }));
+    assert.equal(intra.valid, true);
+    assert.equal(intra.einvoice.TranDtls.IgstOnIntra, 'N');
+    const intraOn = structuredClone(intra.einvoice);
+    intraOn.TranDtls.IgstOnIntra = 'Y';
+    assert.equal(validateEinvoice(intraOn).valid, false);
+  });
+
+  test('a null item is rejected without throwing', () => {
+    const built = buildEinvoice(invoice());
+    const forged = structuredClone(built.einvoice);
+    forged.ItemList = [null];
+    const checked = validateEinvoice(forged);
+    assert.equal(checked.valid, false);
+    assert.ok(checked.errors.some((error) => error.msg === 'Item must be an object.'));
+    assert.equal(checked.errors.some((error) => /Cannot read/.test(error.msg)), false);
   });
 
   test('an ISO document date is rejected', () => {

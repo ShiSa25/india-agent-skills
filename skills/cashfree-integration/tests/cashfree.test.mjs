@@ -260,6 +260,27 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(late.fulfil, false);
     assert.equal(late.action, 'ignore_late');
     assert.equal(late.priorStatus, 'SUCCESS');
+    const again = decideCashfreeEvent({
+      ...base,
+      idempotencyKey: 'second-success',
+      paymentStatus: 'SUCCESS',
+      priorStatus: 'SUCCESS',
+      paymentAmount: '99.00',
+      expectedAmount: '1.00',
+    });
+    assert.equal(again.action, 'amount_mismatch');
+    assert.equal(again.valid, false);
+    assert.equal(again.fulfil, false);
+    const sameAmount = decideCashfreeEvent({
+      ...base,
+      idempotencyKey: 'second-success-ok',
+      paymentStatus: 'SUCCESS',
+      priorStatus: 'SUCCESS',
+      paymentAmount: '170.00',
+      expectedAmount: '170.00',
+    });
+    assert.equal(sameAmount.action, 'already_fulfilled');
+    assert.equal(sameAmount.fulfil, false);
   });
 
   test('version 2026-01-01 is accepted and 2023-08-01 is not', () => {
@@ -280,6 +301,11 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(JSON.parse(raw).payment_amount, 170);
     assert.equal(jsonDecimalToken('{"payment_amount":1e2}', 'payment_amount'), null);
     assert.equal(jsonDecimalToken('{"payment_amount":1E+2}', 'payment_amount'), null);
+    assert.equal(
+      jsonDecimalToken('{"description":"prefix \\"payment_amount\\":999","payment_amount":1.00}', 'payment_amount'),
+      '1.00',
+    );
+    assert.equal(jsonDecimalToken('{"data":{"payment_amount":50.00},"payment_amount":1.00}', 'payment_amount'), null);
   });
 
   test('the replay window cannot be widened and the amount must match', () => {
