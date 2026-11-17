@@ -17,7 +17,7 @@ A skill is a folder with a `SKILL.md`. The frontmatter `description` says what i
 | Claude Code, folder at `.claude/skills/<skill>` | `/gstin-validator` | Same |
 | Cursor | `/gstin-validator` in Agent chat. Option+Enter (Alt+Enter) keeps it for the session | Same |
 
-`npx skills add ShiSa25/india-agent-skills` copies every skill in this repo into the directory the agent already scans. One skill: `npx skills add ShiSa25/india-agent-skills --skill <name>`. All 13 folders are present at v0.1.2.
+`npx skills add ShiSa25/india-agent-skills` copies every skill in this repo into the directory the agent already scans. One skill: `npx skills add ShiSa25/india-agent-skills --skill <name>`. All 13 folders are present at v0.2.0.
 
 ## When to use which skill
 
@@ -1272,9 +1272,9 @@ node skills/sms-otp-dlt/scripts/msg91-otp.mjs --json '{"asOf":"2026-11-01","temp
 }
 ```
 
-## Changes merged after 0.1.2
+## Changes in 0.2.0
 
-The package version stays 0.1.2. There is no new tag. These notes cover pull requests #22–#27 and the fail-closed follow-up. They are breaking for callers that depended on the old acceptance rules. SPEC §1.2 still does not define a deemed-export tax split.
+These notes cover pull requests #22–#27 and the fail-closed follow-up. They are breaking for callers that depended on the old acceptance rules. SPEC §1.2 still does not define a deemed-export tax split.
 
 **Unicode.** `lib/textprep.mjs` folds input. Only ASCII `a-z` is uppercased. Fullwidth digits U+FF10–U+FF19 map to ASCII and produce a warning. A character that becomes an ASCII letter or digit only through compatibility decomposition or default case folding is rejected: long s, Kelvin sign, ligatures, Roman numerals, fullwidth Latin, dotless i, sharp s, capital sharp s, superscript and circled digits, and Cyrillic look-alikes. The whole string is not NFKC-normalised. Aadhaar and PII scanners may still fold those characters so a look-alike is caught. The checker does not. GSTIN, PAN, TAN, IFSC, invoice numbers, amounts, DLT headers, and currency codes use this fold.
 
