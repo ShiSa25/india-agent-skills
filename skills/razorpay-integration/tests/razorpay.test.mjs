@@ -13,6 +13,10 @@ import {
   explainPaymentSignature,
   explainSubunits,
   explainWebhook,
+  jsonIntegerToken,
+  planRazorpayWebhook,
+  razorpayPaymentId,
+  subunitString,
   toSubunits,
   verifyPaymentSignature,
   verifyWebhook,
@@ -275,6 +279,17 @@ describe('events', () => {
     assert.equal(same.action, 'already_fulfilled');
     assert.equal(same.capturedMinor, '50000');
     assert.equal(same.fulfil, false);
+    const omitted = decideRazorpayEvent({
+      ...base,
+      eventId: 'evt_omit_captured',
+      event: 'payment.captured',
+      state: 'captured',
+      capturedMinor: '50000',
+    });
+    assert.equal(omitted.action, 'already_fulfilled');
+    assert.equal(omitted.httpStatus, 200);
+    assert.equal(omitted.fulfil, false);
+    assert.equal(omitted.capturedMinor, '50000');
     const mismatch = decideRazorpayEvent({
       ...base,
       event: 'payment.captured',
@@ -478,31 +493,130 @@ describe('events', () => {
 describe('handlers and evals', () => {
   test('Express, Next.js, and Fastify read the raw body', () => {
     const text = readFileSync(join(skillRoot, 'references', 'handlers.md'), 'utf8');
+    const skill = readFileSync(join(skillRoot, 'SKILL.md'), 'utf8');
     assert.match(text, /express\.raw\(\{ type: 'application\/json' \}\)/);
     assert.match(text, /await req\.text\(\)/);
     assert.match(text, /parseAs: 'buffer'/);
     assert.match(text, /Do not pass `JSON\.stringify\(req\.body\)`/);
     assert.doesNotMatch(text, /\.update\(JSON\.stringify/);
     assert.match(text, /server-side only/);
-    assert.match(text, /Return 200 only after/);
-    assert.doesNotMatch(text, /res\.status\(200\)\.end\(\);\n  const event/);
+    assert.match(text, /lookupStoredPayment/);
+    assert.doesNotMatch(text, /typeof entity\?\.amount === 'string'/);
+    assert.doesNotMatch(skill, /typeof entity\?\.amount === 'string'/);
+    for (const section of [text, skill.slice(skill.indexOf('### Raw body'), skill.indexOf('## Edge cases'))]) {
+      assert.match(section, /planRazorpayWebhook\(/);
+      assert.match(section, /lookupStoredPayment\(/);
+      assert.match(section, /UsageError/);
+      assert.match(section, /plan\.ship/);
+      assert.match(section, /plan\.status/);
+    }
     for (const [heading, next] of [['## Express', '## Next.js'], ['## Next.js', '## Fastify'], ['## Fastify', '']]) {
       const start = text.indexOf(heading);
       const end = next ? text.indexOf(next) : text.length;
       const section = text.slice(start, end);
-      const decideAt = section.indexOf('decideRazorpayEvent(');
-      const guardAt = section.indexOf("decision.action === 'amount_mismatch'");
-      const fulfilAt = section.indexOf('!decision.fulfil');
-      const successAt = Math.max(
-        section.lastIndexOf('status(200)'),
-        section.lastIndexOf('code(200)'),
-        section.lastIndexOf('status: 200'),
-      );
-      assert.ok(decideAt > 0, heading);
-      assert.ok(guardAt > decideAt, heading);
-      assert.ok(fulfilAt > guardAt, heading);
-      assert.ok(successAt > fulfilAt, heading);
+      const planAt = section.indexOf('planRazorpayWebhook(');
+      const guardAt = section.indexOf("plan.decision?.action === 'amount_mismatch'");
+      const shipAt = section.indexOf('!plan.ship');
+      const statusAt = section.lastIndexOf('plan.status');
+      assert.ok(planAt > 0, heading);
+      assert.ok(guardAt > planAt, heading);
+      assert.ok(shipAt > guardAt, heading);
+      assert.ok(statusAt > shipAt, heading);
     }
+  });
+
+  test('a captured payment then order.paid ships once, and a later refund is 200', () => {
+    const store = { payments: new Map(), orders: new Map(), shipped: [] };
+    store.orders.set('order_1', 50000);
+    const captured = {
+      event: 'payment.captured',
+      payload: {
+        payment: { entity: { id: 'pay_1', amount: 50000, order_id: 'order_1', captured: true } },
+      },
+    };
+    const first = deliver(store, captured, 'evt_cap');
+    assert.equal(first.status, 200);
+    assert.equal(first.decision.action, 'fulfil');
+    assert.equal(first.ship, true);
+    assert.deepEqual(store.shipped, ['pay_1']);
+    assert.equal(store.payments.get('pay_1').state, 'captured');
+    assert.equal(store.payments.get('pay_1').capturedMinor, '50000');
+
+    const paid = deliver(store, { ...captured, event: 'order.paid' }, 'evt_paid');
+    assert.equal(paid.status, 200);
+    assert.equal(paid.decision.action, 'already_fulfilled');
+    assert.equal(paid.ship, false);
+    assert.deepEqual(store.shipped, ['pay_1']);
+
+    const earlyRefund = deliver(store, {
+      event: 'refund.processed',
+      payload: {
+        refund: { entity: { amount: 1000, payment_id: 'pay_2' } },
+        payment: { entity: { id: 'pay_2', captured: true } },
+      },
+    }, 'evt_early');
+    assert.equal(earlyRefund.status, 500);
+    assert.equal(earlyRefund.persist, false);
+    assert.equal(store.payments.has('pay_2'), false);
+
+    const refund = deliver(store, {
+      event: 'refund.processed',
+      payload: {
+        refund: { entity: { amount: 6000, payment_id: 'pay_1' } },
+        payment: { entity: { id: 'pay_1', amount: 50000, captured: true, order_id: 'order_1' } },
+      },
+    }, 'evt_refund');
+    assert.equal(refund.status, 200);
+    assert.equal(refund.decision.action, 'refund');
+    assert.equal(refund.ship, false);
+    assert.equal(store.payments.get('pay_1').refundedMinor, '6000');
+    assert.deepEqual(store.shipped, ['pay_1']);
+
+    const again = deliver(store, captured, 'evt_cap');
+    assert.equal(again.status, 200);
+    assert.equal(again.decision.action, 'duplicate');
+    assert.equal(again.persist, false);
+    assert.deepEqual(store.shipped, ['pay_1']);
+  });
+
+  test('a JSON number amount is accepted and an unsafe amount is 400', () => {
+    assert.equal(subunitString(50000), '50000');
+    assert.equal(subunitString('50000'), '50000');
+    assert.throws(() => subunitString(1.5), UsageError);
+    assert.throws(() => subunitString(Number.MAX_SAFE_INTEGER + 2), UsageError);
+    const raw = '{"event":"payment.captured","payload":{"payment":{"entity":{"id":"pay_1","amount":50000,"order_id":"order_1"}},"order":{"entity":{"amount":1}}}}';
+    assert.equal(jsonIntegerToken(raw, ['payload', 'payment', 'entity', 'amount']), '50000');
+    assert.equal(
+      jsonIntegerToken('{"note":"amount\\": 9","payload":{"payment":{"entity":{"amount":50000}}}}', ['payload', 'payment', 'entity', 'amount']),
+      '50000',
+    );
+    assert.equal(jsonIntegerToken(raw, ['payload', 'order', 'entity', 'amount']), '1');
+    assert.throws(() => jsonIntegerToken('{"payload":{"payment":{"entity":{"amount":50000.5}}}}', ['payload', 'payment', 'entity', 'amount']), /integer/);
+    assert.throws(() => jsonIntegerToken('{"payload":{"payment":{"entity":{"amount":1e2}}}}', ['payload', 'payment', 'entity', 'amount']), /integer/);
+    const event = JSON.parse(raw);
+    const plan = planRazorpayWebhook({
+      signatureVerified: true,
+      event,
+      eventId: 'evt_num',
+      rawBody: raw,
+      storedPayment: null,
+      expectedAmount: 50000,
+    });
+    assert.equal(plan.decision.action, 'fulfil');
+    assert.equal(plan.ship, true);
+    assert.equal(plan.payment.capturedMinor, '50000');
+    const fraction = planRazorpayWebhook({
+      signatureVerified: true,
+      event: { event: 'payment.captured', payload: { payment: { entity: { id: 'pay_1', amount: 1.5 } } } },
+      eventId: 'evt_bad',
+      rawBody: '{"event":"payment.captured","payload":{"payment":{"entity":{"id":"pay_1","amount":1.5}}}}',
+      storedPayment: null,
+      expectedAmount: '2',
+    });
+    assert.equal(fraction.status, 400);
+    assert.equal(fraction.persist, false);
+    assert.equal(fraction.ship, false);
+    assert.equal(razorpayPaymentId(event), 'pay_1');
   });
 
   test('evals.json expectations match the scripts', () => {
@@ -555,6 +669,32 @@ describe('CLI', () => {
     assert.equal(JSON.parse(decision.stdout).fulfil, false);
   });
 });
+
+function deliver(store, event, eventId) {
+  const paymentId = razorpayPaymentId(event);
+  const rawBody = JSON.stringify(event);
+  const orderId = event?.payload?.payment?.entity?.order_id;
+  const plan = planRazorpayWebhook({
+    signatureVerified: true,
+    event,
+    eventId,
+    rawBody,
+    storedPayment: store.payments.get(paymentId) ?? null,
+    expectedAmount: orderId === undefined ? undefined : store.orders.get(orderId),
+  });
+  if (!plan.persist) return plan;
+  const prior = store.payments.get(paymentId);
+  const seen = new Set(prior?.seenEventIds ?? []);
+  seen.add(eventId);
+  store.payments.set(paymentId, {
+    state: plan.payment.state,
+    capturedMinor: plan.payment.capturedMinor,
+    refundedMinor: plan.payment.refundedMinor,
+    seenEventIds: [...seen],
+  });
+  if (plan.ship) store.shipped.push(paymentId);
+  return plan;
+}
 
 function runExpect(expect) {
   if (expect.op === 'subunits') return explainSubunits(expect.input);
