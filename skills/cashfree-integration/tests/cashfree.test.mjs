@@ -315,10 +315,15 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(jsonDecimalToken('{"payment_amount":1E+2}', 'payment_amount'), null);
     assert.equal(jsonDecimalToken('{"payment_amount":\n\t170.00}', 'payment_amount'), '170.00');
     assert.equal(
-      jsonDecimalToken('{"description":"payment_amount":999,"payment_amount":1.00}', 'payment_amount'),
+      jsonDecimalToken('{"description":"payment_amount:999","payment_amount":1.00}', 'payment_amount'),
       '1.00',
     );
+    assert.equal(
+      jsonDecimalToken('{"description":"payment_amount":999,"payment_amount":1.00}', 'payment_amount'),
+      null,
+    );
     assert.equal(jsonDecimalToken('{"data":{"payment_amount":50.00},"payment_amount":1.00}', 'payment_amount'), null);
+    assert.equal(jsonDecimalToken('{"data":{"payment":{"payment_amount":170.00}}}', 'payment_amount'), '170.00');
   });
 
   test('escaped keys, stray colons, and depth fail closed', () => {
@@ -331,7 +336,7 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(jsonDecimalToken('{"payment_amount":170.00:170.00}', 'payment_amount'), null);
     assert.equal(jsonDecimalToken('{"payment_amount":1.00:1e2}', 'payment_amount'), null);
     assert.equal(jsonDecimalToken('{"payment_amount":1.00:{"payment_amount":170.00}}', 'payment_amount'), null);
-    assert.equal(jsonDecimalToken('{"a":1:2,"payment_amount":170.00}', 'payment_amount'), '170.00');
+    assert.equal(jsonDecimalToken('{"a":1:2,"payment_amount":170.00}', 'payment_amount'), null);
 
     const equal = '{"payment_amount":170.00,"payment_amount":170.00}';
     assert.equal(jsonDecimalToken(equal, 'payment_amount'), null);
@@ -367,6 +372,38 @@ describe('version, idempotency, and fulfilment', () => {
     });
     assert.equal(overDepth.action, 'amount_mismatch');
     assert.equal(overDepth.fulfil, false);
+  });
+
+  test('a non-decimal payment_amount does not fulfil', () => {
+    const bodies = [
+      '{"payment_amount":170.00,"payment_amount":null}',
+      '{"payment_amount":170.00,"payment_amount":{}}',
+      '{"payment_amount":{"payment_amount":170.00}}',
+      '{"payment_amount":170.00,"payment_amount":false}',
+      '{"payment_amount":170.00,"payment_amount":true}',
+      '{"payment_amount":170.00,"payment_amount":"170.00"}',
+      '{"payment_amount":170.00,"payment_amount":[170.00]}',
+      '{"payment_amount":170.00,"note":"x":"payment_amount":1.00}',
+      '{"payment_amount":170.00,"note":1:true}',
+      '{"payment_amount":170.00,"note":1:false}',
+      '{"payment_amount":170.00,"note":1:null}',
+    ];
+    for (const [index, raw] of bodies.entries()) {
+      const token = jsonDecimalToken(raw, 'payment_amount');
+      assert.equal(token, null, raw);
+      const decision = decideCashfreeEvent({
+        ...base,
+        idempotencyKey: `non-decimal-${index}`,
+        paymentStatus: 'SUCCESS',
+        paymentAmount: token,
+        expectedAmount: '170.00',
+      });
+      assert.equal(decision.action, 'amount_mismatch', raw);
+      assert.equal(decision.valid, false, raw);
+      assert.equal(decision.fulfil, false, raw);
+    }
+    assert.equal(jsonDecimalToken('{"payment_amount":170.00,"other":171}', 'payment_amount'), '170.00');
+    assert.equal(JSON.parse('{"payment_amount":170.00}').payment_amount, 170);
   });
 
   test('the replay window cannot be widened and the amount must match', () => {
@@ -411,6 +448,13 @@ describe('handlers and evals', () => {
     assert.match(text, /x-webhook-timestamp/);
     assert.match(text, /server-side only/);
     assert.match(text, /Return 200 only after/);
+    const next = text.slice(text.indexOf('## Next.js'), text.indexOf('## Fastify'));
+    const parsed = next.indexOf('JSON.parse(rawBody)');
+    const rejected = next.indexOf('status: 400', parsed);
+    const fulfilled = next.lastIndexOf('status: 200');
+    assert.ok(parsed > 0);
+    assert.ok(rejected > parsed);
+    assert.ok(fulfilled > rejected);
     assert.doesNotMatch(text, /result\.reason/);
     assert.doesNotMatch(text, /res\.status\(200\)\.end\(\);\n  const event/);
     assert.doesNotMatch(text, /\.update\(JSON\.stringify/);

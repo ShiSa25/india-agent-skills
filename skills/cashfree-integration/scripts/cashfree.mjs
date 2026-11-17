@@ -111,27 +111,54 @@ export function jsonDecimalToken(rawBody, field) {
   const text = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
   if (typeof text !== 'string') throw new UsageError('rawBody must be a string or a Buffer');
   if (!/^[A-Za-z0-9_]{1,64}$/.test(field)) throw new UsageError('field must be an identifier');
-  let found = null;
-  let ambiguous = false;
-  let exponent = false;
-  let failed = false;
-  walkJson(text, 0, field, {
-    take(token) {
-      if (token === 'exponent') exponent = true;
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const sink = {
+    found: null,
+    path: null,
+    ambiguous: false,
+    failed: false,
+    take(token, path) {
       // A second structural match is ambiguous even when the decimal text is identical.
-      // Two payment_amount fields do not fulfil.
-      else if (found !== null) ambiguous = true;
-      else found = token;
+      if (this.found !== null) this.ambiguous = true;
+      else {
+        this.found = token;
+        this.path = path;
+      }
     },
     fail() {
-      failed = true;
+      this.failed = true;
     },
-  });
-  if (exponent || ambiguous || failed) return null;
-  return found;
+  };
+  walkJson(text, field, sink);
+  if (sink.ambiguous || sink.failed || sink.found === null) return null;
+  const value = valueAt(parsed, sink.path);
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  let tokenNumber;
+  try {
+    tokenNumber = JSON.parse(sink.found);
+  } catch {
+    return null;
+  }
+  if (typeof tokenNumber !== 'number' || tokenNumber !== value) return null;
+  return sink.found;
 }
 
-function walkJson(text, index, field, sink) {
+function valueAt(root, path) {
+  let current = root;
+  for (const part of path) {
+    if (current === null || typeof current !== 'object') return undefined;
+    current = current[part];
+  }
+  return current;
+}
+
+function walkJson(text, field, sink) {
+  const path = [];
   function failed() {
     return sink.failed === true;
   }
@@ -147,7 +174,6 @@ function walkJson(text, index, field, sink) {
         const decoded = decodeJsonEscape(text, i);
         if (!decoded) {
           sink.fail();
-          sink.failed = true;
           return { i: text.length, out: '' };
         }
         out += decoded.ch;
@@ -159,7 +185,6 @@ function walkJson(text, index, field, sink) {
       i += 1;
     }
     sink.fail();
-    sink.failed = true;
     return { i, out: '' };
   }
   function skipNumber(i) {
@@ -180,23 +205,34 @@ function walkJson(text, index, field, sink) {
     }
     return { i, token: null };
   }
-  function walkValue(i, depth) {
+  function walkValue(i, depth, capture) {
     if (failed()) return text.length;
     i = skipWs(i);
     if (text[i] === '"') return parseString(i).i;
-    if (text[i] === '{') return walkObject(i, depth + 1);
-    if (text[i] === '[') return walkArray(i, depth + 1);
+    if (text[i] === '{') return walkObject(i, depth + 1, capture);
+    if (text[i] === '[') return walkArray(i, depth + 1, capture);
     if (text.startsWith('true', i)) return i + 4;
     if (text.startsWith('false', i)) return i + 5;
     if (text.startsWith('null', i)) return i + 4;
     if (text[i] === '-' || isDigit(text[i])) return skipNumber(i).i;
-    return i + 1;
+    sink.fail();
+    return text.length;
   }
-  function walkObject(i, depth) {
+  function takeFieldValue(i, depth) {
+    i = skipWs(i);
+    if (text[i] === '-' || isDigit(text[i])) {
+      const num = skipNumber(i);
+      if (num.token && num.token !== 'exponent') sink.take(num.token, path.slice());
+      else sink.fail();
+      return num.i > i ? num.i : walkValue(i, depth, false);
+    }
+    sink.fail();
+    return walkValue(i, depth, false);
+  }
+  function walkObject(i, depth, capture) {
     if (failed()) return text.length;
     if (depth > MAX_JSON_DEPTH) {
       sink.fail();
-      sink.failed = true;
       return text.length;
     }
     i = skipWs(i + 1);
@@ -204,67 +240,71 @@ function walkJson(text, index, field, sink) {
     while (i < text.length) {
       if (failed()) return text.length;
       i = skipWs(i);
-      if (text[i] !== '"') return i;
+      if (text[i] !== '"') {
+        sink.fail();
+        return text.length;
+      }
       const key = parseString(i);
       if (failed()) return text.length;
       i = skipWs(key.i);
-      if (text[i] !== ':') return i;
+      if (text[i] !== ':') {
+        sink.fail();
+        return text.length;
+      }
       i = skipWs(i + 1);
-      if (key.out === field && (text[i] === '-' || isDigit(text[i]))) {
-        const num = skipNumber(i);
-        if (num.token) sink.take(num.token);
-        i = num.token ? num.i : walkValue(i, depth);
+      const matched = key.out === field;
+      if (matched && capture) {
+        path.push(key.out);
+        i = takeFieldValue(i, depth);
+        path.pop();
       } else {
-        i = walkValue(i, depth);
+        if (!matched && capture) path.push(key.out);
+        i = walkValue(i, depth, matched ? false : capture);
+        if (!matched && capture) path.pop();
       }
       i = skipWs(i);
-      if (text[i] === ':') {
-        const after = skipWs(i + 1);
-        if (text[after] === '-' || isDigit(text[after])) {
-          const num = skipNumber(after);
-          if (key.out === field && num.token) sink.take(num.token);
-          i = num.token ? num.i : after;
-        } else if (text[after] === '{' || text[after] === '[') {
-          sink.fail();
-          sink.failed = true;
-          return text.length;
-        }
-        i = skipWs(i);
-      }
       if (text[i] === ',') {
         i += 1;
         continue;
       }
       if (text[i] === '}') return i + 1;
-      return i;
+      sink.fail();
+      return text.length;
     }
+    sink.fail();
     return i;
   }
-  function walkArray(i, depth) {
+  function walkArray(i, depth, capture) {
     if (failed()) return text.length;
     if (depth > MAX_JSON_DEPTH) {
       sink.fail();
-      sink.failed = true;
       return text.length;
     }
     i = skipWs(i + 1);
     if (text[i] === ']') return i + 1;
+    let index = 0;
     while (i < text.length) {
       if (failed()) return text.length;
-      i = walkValue(i, depth);
+      if (capture) path.push(index);
+      i = walkValue(i, depth, capture);
+      if (capture) path.pop();
+      index += 1;
       i = skipWs(i);
       if (text[i] === ',') {
         i += 1;
         continue;
       }
       if (text[i] === ']') return i + 1;
-      return i;
+      sink.fail();
+      return text.length;
     }
+    sink.fail();
     return i;
   }
-  const start = skipWs(index);
-  if (text[start] === '{') walkObject(start, 1);
-  else if (text[start] === '[') walkArray(start, 1);
+  const start = skipWs(0);
+  if (text[start] === '{') walkObject(start, 1, true);
+  else if (text[start] === '[') walkArray(start, 1, true);
+  else sink.fail();
 }
 
 function decodeJsonEscape(text, i) {
