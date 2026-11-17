@@ -216,13 +216,11 @@ function checkCategoryTiming(category, input, asOf, minutesRule, hoursRule, optO
   }
   if (category !== 'promotional') return;
   const time = readIstTime(input);
-  if (!time) {
-    warnings.push(issue('promotional-hours', 'sentAtIst is missing, so the 10:00–21:00 IST default window was not checked.', 'skill'));
-    return;
-  }
   const start = hoursRule.value.start;
   const end = hoursRule.value.end;
-  if (time < start || time >= end) {
+  if (!time) {
+    warnings.push(issue('promotional-hours', 'sentAtIst is missing, so the 10:00–21:00 IST default window was not checked.', 'skill'));
+  } else if (time < start || time >= end) {
     warnings.push(issue(
       'promotional-hours',
       `Promotional messages are restricted to ${start}–${end} IST by default. Schedule II marks the bands outside that window default OFF unless the recipient has switched them on. UNVERIFIED against the gazette imprint; the consolidated text says the gazette prevails.`,

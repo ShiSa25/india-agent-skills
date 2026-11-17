@@ -143,6 +143,36 @@ describe('SPEC vectors', () => {
     const otpAtNight = lintDlt(good({ sentAtIst: '22:00' }));
     assert.equal(otpAtNight.warnings.some((item) => item.code === 'promotional-hours'), false);
   });
+
+  test('a promotional template with no opt-out warns with or without a send time', () => {
+    const sale = {
+      template: 'Acme sale {#var#} percent off today',
+      message: 'Acme sale 10 percent off today',
+      variables: ['10'],
+      header: 'ACMEIN-P',
+      category: 'promotional',
+    };
+    const optOut = (result) => result.warnings.some((item) => item.code === 'promotional-opt-out');
+
+    assert.equal(optOut(lintDlt(good({ ...sale, sentAtIst: '16:30' }))), true);
+
+    const noTime = lintDlt(good({ ...sale, sentAtIst: undefined }));
+    assert.equal(noTime.valid, true);
+    assert.equal(optOut(noTime), true);
+    assert.match(noTime.warnings.find((item) => item.code === 'promotional-hours').message, /sentAtIst is missing/);
+
+    assert.equal(optOut(lintDlt(good({ ...sale, sentAtIst: '9:30' }))), true);
+
+    const withStop = lintDlt(good({
+      ...sale,
+      template: 'Acme sale {#var#} percent off today. Reply STOP',
+      message: 'Acme sale 10 percent off today. Reply STOP',
+      sentAtIst: undefined,
+    }));
+    assert.equal(optOut(withStop), false);
+
+    assert.equal(optOut(lintDlt(good({ sentAtIst: undefined }))), false);
+  });
 });
 
 describe('headers, chains, and categories', () => {
