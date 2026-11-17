@@ -26,6 +26,8 @@ jobs:
       # SPEC §0.6 step 2 asks for `npx skills-ref validate`, pinned to a commit.
       # The spec names neither the package nor the commit, and validation must
       # pass with no network, so `npm run validate` uses tools/validate-frontmatter.mjs.
+      - name: Install
+        run: npm ci
       - name: Test
         run: npm test
       - name: Validate

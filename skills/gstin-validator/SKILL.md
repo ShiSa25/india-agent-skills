@@ -77,7 +77,7 @@ State names for codes other than `28` and `99` are the MasterCodes names. Code `
 - `27AAACX0000A1DK` is TDS-shaped (14th character `D`) and the checksum matches, but `AAACX0000A` is not a TAN (`AAAA99999A`), so it is invalid. A synthetic TAN such as `AAAA00000A` validates.
 - `25AAACX0000A1ZF` is valid and warns `legacy state code`.
 - Lowercase ASCII letters are normalised to uppercase and warned. Spaces and hyphens are removed and warned. Fullwidth digits U+FF10–U+FF19 are mapped to ASCII and warned. The whole string is not NFKC-normalised.
-- A Cyrillic look-alike (for example `А`, U+0410) is rejected. It is not stripped. So is a character that becomes an ASCII letter only through compatibility decomposition or case folding: long s, Kelvin sign, a Latin ligature, a Roman numeral, a fullwidth Latin letter, dotless i, or sharp s.
+- A Cyrillic look-alike (for example `А`, U+0410) is rejected. It is not stripped. So is a character that becomes an ASCII letter or digit only through compatibility decomposition or case folding: long s, Kelvin sign, a Latin ligature, a Roman numeral, a fullwidth Latin letter, dotless i, sharp s, capital sharp s, or a superscript or circled digit. The fold lives in `lib/textprep.mjs`.
 - A zero-width or bidi control character is rejected.
 - The 13th character `0` is invalid on regular, TDS, and TCS GSTINs.
 - Input longer than 10 KB is rejected before any pattern runs.

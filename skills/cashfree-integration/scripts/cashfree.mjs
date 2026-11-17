@@ -13,6 +13,7 @@ const CONTROLS = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/;
 const HEX_DIGEST = /^[0-9a-fA-F]{64}$/;
 const STANDARD_B64 = /^[A-Za-z0-9+/]{43}=$/;
 const TIMESTAMP = /^[0-9]{1,16}$/;
+const AMOUNT_RETRY_WARNING = 'Do not store the idempotency key. Return non-2xx so Cashfree can retry.';
 
 export class UsageError extends Error {
   constructor(message) {
@@ -452,13 +453,18 @@ export function decideCashfreeEvent(input) {
     action = 'record';
     warnings.push('only payment_status SUCCESS is fulfilment');
   }
+  const retryAmount = action === 'needs_amount' || action === 'amount_mismatch';
+  if (retryAmount) {
+    httpStatus = 400;
+    warnings.push(AMOUNT_RETRY_WARNING);
+  }
   return decision(domain, rules, {
     valid,
     httpStatus,
     action,
     fulfil,
     duplicate: false,
-    storeKey: true,
+    storeKey: !retryAmount,
     priorStatus: next,
     paymentStatus: status.value,
     idempotencyHeader: headerRule.value,

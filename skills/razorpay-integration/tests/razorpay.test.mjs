@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { PGlite } from '@electric-sql/pglite';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
@@ -13,10 +14,21 @@ import {
   explainPaymentSignature,
   explainSubunits,
   explainWebhook,
+  jsonIntegerToken,
+  planRazorpayWebhook,
+  razorpayPaymentId,
+  subunitString,
   toSubunits,
   verifyPaymentSignature,
   verifyWebhook,
 } from '../scripts/razorpay.mjs';
+import {
+  INSERT_EVENT,
+  INSERT_PAYMENT,
+  LOCK_PAYMENT,
+  UPDATE_PAYMENT,
+  applyRazorpayWebhook,
+} from '../examples/apply-webhook.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const skillRoot = join(here, '..');
@@ -262,6 +274,8 @@ describe('events', () => {
     assert.equal(repeat.valid, false);
     assert.equal(repeat.fulfil, false);
     assert.equal(repeat.capturedMinor, '50000');
+    assert.equal(repeat.storeEventId, false);
+    assert.equal(repeat.httpStatus, 400);
     const same = decideRazorpayEvent({
       ...base,
       eventId: 'evt_same',
@@ -273,6 +287,17 @@ describe('events', () => {
     assert.equal(same.action, 'already_fulfilled');
     assert.equal(same.capturedMinor, '50000');
     assert.equal(same.fulfil, false);
+    const omitted = decideRazorpayEvent({
+      ...base,
+      eventId: 'evt_omit_captured',
+      event: 'payment.captured',
+      state: 'captured',
+      capturedMinor: '50000',
+    });
+    assert.equal(omitted.action, 'already_fulfilled');
+    assert.equal(omitted.httpStatus, 200);
+    assert.equal(omitted.fulfil, false);
+    assert.equal(omitted.capturedMinor, '50000');
     const mismatch = decideRazorpayEvent({
       ...base,
       event: 'payment.captured',
@@ -281,6 +306,8 @@ describe('events', () => {
     });
     assert.equal(mismatch.fulfil, false);
     assert.equal(mismatch.action, 'amount_mismatch');
+    assert.equal(mismatch.storeEventId, false);
+    assert.equal(mismatch.httpStatus, 400);
     const matched = decideRazorpayEvent({
       ...base,
       event: 'payment.captured',
@@ -414,6 +441,9 @@ describe('events', () => {
     assert.equal(captured.action, 'needs_amount');
     assert.equal(captured.fulfil, false);
     assert.equal(captured.valid, false);
+    assert.equal(captured.storeEventId, false);
+    assert.equal(captured.httpStatus, 400);
+    assert.ok(captured.warnings.includes('Do not store the event id. Return non-2xx so Razorpay can retry.'));
     assert.equal(captured.state, 'none');
     assert.equal(captured.capturedMinor, '0');
     assert.match(captured.errors[0], /expectedMinor/);
@@ -440,6 +470,8 @@ describe('events', () => {
     assert.equal(row.action, 'amount_mismatch');
     assert.equal(row.fulfil, false);
     assert.equal(row.valid, false);
+    assert.equal(row.storeEventId, false);
+    assert.equal(row.httpStatus, 400);
     assert.notEqual(row.state, 'captured');
     const both = decideRazorpayEvent({
       ...base,
@@ -467,16 +499,159 @@ describe('events', () => {
 });
 
 describe('handlers and evals', () => {
-  test('Express, Next.js, and Fastify read the raw body', () => {
+  test('handlers.md copies examples/apply-webhook.mjs and the routes call it', () => {
+    const source = readFileSync(join(skillRoot, 'examples', 'apply-webhook.mjs'), 'utf8').trim();
     const text = readFileSync(join(skillRoot, 'references', 'handlers.md'), 'utf8');
-    assert.match(text, /express\.raw\(\{ type: 'application\/json' \}\)/);
-    assert.match(text, /await req\.text\(\)/);
-    assert.match(text, /parseAs: 'buffer'/);
-    assert.match(text, /Do not pass `JSON\.stringify\(req\.body\)`/);
-    assert.doesNotMatch(text, /\.update\(JSON\.stringify/);
-    assert.match(text, /server-side only/);
-    assert.match(text, /Return 200 only after/);
-    assert.doesNotMatch(text, /res\.status\(200\)\.end\(\);\n  const event/);
+    const skill = readFileSync(join(skillRoot, 'SKILL.md'), 'utf8');
+    assert.ok(text.includes(source));
+    for (const section of [text, skill]) {
+      assert.match(section, /applyRazorpayWebhook\(client/);
+      assert.match(section, /pool\.connect\(\)/);
+      assert.match(section, /if \(plan\.ship\) ship\(plan\.paymentId\)/);
+      assert.doesNotMatch(section, /row\?\.state/);
+      assert.doesNotMatch(section, /seen\.map\(/);
+    }
+    const body = applyRazorpayWebhook.toString();
+    const order = ['BEGIN', 'INSERT_PAYMENT', 'LOCK_PAYMENT', 'planRazorpayWebhook', 'INSERT_EVENT', 'UPDATE_PAYMENT', 'rowCount', 'COMMIT'];
+    let at = -1;
+    for (const token of order) {
+      const next = body.indexOf(token, at + 1);
+      assert.ok(next > at, token);
+      at = next;
+    }
+    assert.match(INSERT_PAYMENT, /ON CONFLICT \(id\) DO NOTHING/);
+    assert.match(LOCK_PAYMENT, /FOR UPDATE/);
+    assert.match(UPDATE_PAYMENT, /UPDATE payments/);
+    assert.match(INSERT_EVENT, /INSERT INTO razorpay_events/);
+  });
+
+  test('a missing signature is a usage error and the handler maps it to 400', () => {
+    assert.throws(
+      () => verifyWebhook({ rawBody: '{}', secret: 'whsec_test' }),
+      UsageError,
+    );
+    assert.equal(webhookStatus({ rawBody: '{}', secret: 'whsec_test' }), 400);
+    assert.equal(webhookStatus({ rawBody: '{}', signature: 1, secret: 'whsec_test' }), 400);
+  });
+
+  test('published SQL ships once for a new payment and keeps both refunds', async () => {
+    const db = await razorpayDb();
+    const shipped = [];
+    const payment = { id: 'pay_new', amount: 50000, order_id: 'order_1', captured: true };
+    const captured = { event: 'payment.captured', payload: { payment: { entity: payment } } };
+    const paid = { event: 'order.paid', payload: { payment: { entity: payment } } };
+    const deliver = async (event, eventId) => {
+      const plan = await applyRazorpayWebhook(db, {
+        signatureVerified: true,
+        event,
+        eventId,
+        rawBody: JSON.stringify(event),
+        expectedAmount: 50000,
+      });
+      if (plan.ship) shipped.push(eventId);
+      return plan;
+    };
+    const first = await deliver(captured, 'evt_cap');
+    const second = await deliver(paid, 'evt_paid');
+    assert.equal(first.ship, true);
+    assert.equal(first.decision.action, 'fulfil');
+    assert.equal(second.ship, false);
+    assert.equal(second.decision.action, 'already_fulfilled');
+    assert.deepEqual(shipped, ['evt_cap']);
+    const saved = await db.query('SELECT state, captured_minor, refunded_minor FROM payments WHERE id = $1', ['pay_new']);
+    assert.equal(saved.rows[0].state, 'captured');
+    assert.equal(saved.rows[0].captured_minor, '50000');
+    assert.equal(saved.rows[0].refunded_minor, '0');
+    const refund = (amount, eventId) => deliver({
+      event: 'refund.processed',
+      payload: {
+        refund: { entity: { amount, payment_id: 'pay_new' } },
+        payment: { entity: payment },
+      },
+    }, eventId);
+    const small = await refund(1000, 'evt_r1');
+    const large = await refund(2000, 'evt_r2');
+    assert.equal(small.status, 200);
+    assert.equal(small.ship, false);
+    assert.equal(large.status, 200);
+    assert.equal(large.ship, false);
+    const after = await db.query('SELECT refunded_minor FROM payments WHERE id = $1', ['pay_new']);
+    assert.equal(after.rows[0].refunded_minor, '3000');
+    const again = await deliver(captured, 'evt_cap');
+    assert.equal(again.status, 200);
+    assert.equal(again.ship, false);
+    assert.equal(again.decision.action, 'duplicate');
+    assert.deepEqual(shipped, ['evt_cap']);
+    try {
+      await db.query(INSERT_EVENT, ['evt_cap', 'pay_new']);
+      assert.fail('expected 23505');
+    } catch (error) {
+      assert.equal(error.code, '23505');
+    }
+    const racing = {
+      async query(sql, params) {
+        if (sql === INSERT_EVENT) {
+          const error = new Error('duplicate key');
+          error.code = '23505';
+          throw error;
+        }
+        return db.query(sql, params);
+      },
+    };
+    const raced = await applyRazorpayWebhook(racing, {
+      signatureVerified: true,
+      event: { event: 'payment.captured', payload: { payment: { entity: { ...payment, id: 'pay_race' } } } },
+      eventId: 'evt_race',
+      rawBody: JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_race', amount: 50000, order_id: 'order_1', captured: true } } } }),
+      expectedAmount: 50000,
+    });
+    assert.equal(raced.status, 200);
+    assert.equal(raced.ship, false);
+    const racedRow = await db.query('SELECT id FROM payments WHERE id = $1', ['pay_race']);
+    assert.equal(racedRow.rows.length, 0);
+  });
+
+  test('a JSON number amount is accepted and an unsafe amount is 400', () => {
+    assert.equal(subunitString(50000), '50000');
+    assert.equal(subunitString('50000'), '50000');
+    assert.throws(() => subunitString(1.5), UsageError);
+    assert.throws(() => subunitString(Number.MAX_SAFE_INTEGER + 2), UsageError);
+    const raw = '{"event":"payment.captured","payload":{"payment":{"entity":{"id":"pay_1","amount":50000,"order_id":"order_1"}},"order":{"entity":{"amount":1}}}}';
+    assert.equal(jsonIntegerToken(raw, ['payload', 'payment', 'entity', 'amount']), '50000');
+    assert.equal(
+      jsonIntegerToken('{"note":"amount\\": 9","payload":{"payment":{"entity":{"amount":50000}}}}', ['payload', 'payment', 'entity', 'amount']),
+      '50000',
+    );
+    assert.equal(jsonIntegerToken(raw, ['payload', 'order', 'entity', 'amount']), '1');
+    assert.throws(() => jsonIntegerToken('{"payload":{"payment":{"entity":{"amount":50000.5}}}}', ['payload', 'payment', 'entity', 'amount']), /integer/);
+    assert.throws(() => jsonIntegerToken('{"payload":{"payment":{"entity":{"amount":1e2}}}}', ['payload', 'payment', 'entity', 'amount']), /integer/);
+    assert.throws(() => jsonIntegerToken(`${raw} trailing`, ['payload', 'payment', 'entity', 'amount']), /trailing data/);
+    assert.equal(jsonIntegerToken(`${raw}  \n`, ['payload', 'payment', 'entity', 'amount']), '50000');
+    const event = JSON.parse(raw);
+    const plan = planRazorpayWebhook({
+      signatureVerified: true,
+      event,
+      eventId: 'evt_num',
+      rawBody: raw,
+      storedPayment: null,
+      expectedAmount: 50000,
+    });
+    assert.equal(plan.decision.action, 'fulfil');
+    assert.equal(plan.ship, true);
+    assert.equal(plan.payment.capturedMinor, '50000');
+    assert.deepEqual(plan.payment.seenEventIds, ['evt_num']);
+    const fraction = planRazorpayWebhook({
+      signatureVerified: true,
+      event: { event: 'payment.captured', payload: { payment: { entity: { id: 'pay_1', amount: 1.5 } } } },
+      eventId: 'evt_bad',
+      rawBody: '{"event":"payment.captured","payload":{"payment":{"entity":{"id":"pay_1","amount":1.5}}}}',
+      storedPayment: null,
+      expectedAmount: '2',
+    });
+    assert.equal(fraction.status, 400);
+    assert.equal(fraction.persist, false);
+    assert.equal(fraction.ship, false);
+    assert.equal(razorpayPaymentId(event), 'pay_1');
   });
 
   test('evals.json expectations match the scripts', () => {
@@ -529,6 +704,32 @@ describe('CLI', () => {
     assert.equal(JSON.parse(decision.stdout).fulfil, false);
   });
 });
+
+function webhookStatus(input) {
+  try {
+    return verifyWebhook(input) ? 200 : 400;
+  } catch (error) {
+    if (error instanceof UsageError) return 400;
+    throw error;
+  }
+}
+
+async function razorpayDb() {
+  const db = new PGlite();
+  await db.exec(`
+    CREATE TABLE payments (
+      id text PRIMARY KEY,
+      state text NOT NULL,
+      captured_minor text NOT NULL,
+      refunded_minor text NOT NULL
+    );
+    CREATE TABLE razorpay_events (
+      event_id text PRIMARY KEY,
+      payment_id text NOT NULL
+    );
+  `);
+  return db;
+}
 
 function runExpect(expect) {
   if (expect.op === 'subunits') return explainSubunits(expect.input);

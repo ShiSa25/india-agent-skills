@@ -13,6 +13,7 @@ const BODY_MAX = 1024 * 1024;
 const CONTROLS = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/;
 const HEX_MAC = /^[0-9a-f]{64}$/;
 const INTEGER = /^-?[0-9]+$/;
+const AMOUNT_RETRY_WARNING = 'Do not store the event id. Return non-2xx so Razorpay can retry.';
 
 export class UsageError extends Error {
   constructor(message) {
@@ -257,17 +258,7 @@ export function decideRazorpayEvent(input) {
   const refunded = BigInt(base.refundedMinor);
   if (fulfilRule.value.includes(eventName.value)) {
     if (signedZeroMinor(input.amountMinor) || signedZeroMinor(input.expectedMinor)) {
-      return decision(domain, rules, {
-        ...base,
-        valid: false,
-        httpStatus: 200,
-        action: 'amount_mismatch',
-        fulfil: false,
-        duplicate: false,
-        storeEventId: true,
-        errors: ['A signed zero amount is invalid. Do not ship.'],
-        warnings: [],
-      });
+      return amountRetryDecision(domain, rules, base, 'amount_mismatch', 'A signed zero amount is invalid. Do not ship.');
     }
     const amount = optionalMinor(input.amountMinor, 'amountMinor');
     const nextCaptured = amount === null ? captured : amount;
@@ -275,30 +266,10 @@ export function decideRazorpayEvent(input) {
     if (!already) {
       const expected = optionalMinor(input.expectedMinor, 'expectedMinor');
       if (amount === null || expected === null) {
-        return decision(domain, rules, {
-          ...base,
-          valid: false,
-          httpStatus: 200,
-          action: 'needs_amount',
-          fulfil: false,
-          duplicate: false,
-          storeEventId: true,
-          errors: ['expectedMinor is required before payment.captured or order.paid can fulfil. Do not ship. Omitting amountMinor must not be stored as capturedMinor 0.'],
-          warnings: [],
-        });
+        return amountRetryDecision(domain, rules, base, 'needs_amount', 'expectedMinor is required before payment.captured or order.paid can fulfil. Do not ship. Omitting amountMinor must not be stored as capturedMinor 0.');
       }
       if (expected !== nextCaptured) {
-        return decision(domain, rules, {
-          ...base,
-          valid: false,
-          httpStatus: 200,
-          action: 'amount_mismatch',
-          fulfil: false,
-          duplicate: false,
-          storeEventId: true,
-          errors: ['amountMinor does not match expectedMinor. Do not ship.'],
-          warnings: [],
-        });
+        return amountRetryDecision(domain, rules, base, 'amount_mismatch', 'amountMinor does not match expectedMinor. Do not ship.');
       }
       return decision(domain, rules, {
         ...base,
@@ -316,17 +287,7 @@ export function decideRazorpayEvent(input) {
     }
     const expected = optionalMinor(input.expectedMinor, 'expectedMinor');
     if ((amount !== null && amount !== captured) || (expected !== null && expected !== captured)) {
-      return decision(domain, rules, {
-        ...base,
-        valid: false,
-        httpStatus: 200,
-        action: 'amount_mismatch',
-        fulfil: false,
-        duplicate: false,
-        storeEventId: true,
-        errors: ['The capture amount does not match the amount already stored. Do not change capturedMinor and do not ship.'],
-        warnings: [],
-      });
+      return amountRetryDecision(domain, rules, base, 'amount_mismatch', 'The capture amount does not match the amount already stored. Do not change capturedMinor and do not ship.');
     }
     return decision(domain, rules, {
       ...base,
@@ -413,6 +374,317 @@ export function decideRazorpayEvent(input) {
     storeEventId: true,
     errors: [],
     warnings: [`no fulfilment rule for ${eventName.value}`],
+  });
+}
+
+const JSON_DEPTH = 32;
+
+/**
+ * A non-negative integer of subunits, as a decimal string.
+ * A safe integer number is accepted. A fraction, an exponent, a signed zero
+ * number, or an integer past Number.MAX_SAFE_INTEGER is rejected.
+ * @param {unknown} value
+ */
+export function subunitString(value) {
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (/^-0+$/.test(text)) return text;
+    if (!/^[0-9]+$/.test(text)) throw new UsageError('subunit amount must be a non-negative integer string');
+    return text;
+  }
+  if (typeof value === 'bigint') {
+    if (value < 0n) throw new UsageError('subunit amount must be a non-negative integer');
+    return value.toString();
+  }
+  if (typeof value === 'number') {
+    if (Object.is(value, -0) || !Number.isSafeInteger(value) || value < 0) {
+      throw new UsageError('subunit amount must be a safe non-negative integer');
+    }
+    return String(value);
+  }
+  throw new UsageError('subunit amount must be a string or a safe integer');
+}
+
+/**
+ * The raw integer token at `path` in a JSON text, or null when that path is absent.
+ * A fraction, an exponent, a sign, or a second token at the same path is rejected.
+ * @param {string|Buffer} rawBody
+ * @param {string[]} path
+ */
+export function jsonIntegerToken(rawBody, path) {
+  if (!Array.isArray(path) || path.some((key) => typeof key !== 'string' || key.length === 0)) {
+    throw new UsageError('amount path must be an array of strings');
+  }
+  const text = rawText(rawBody);
+  const found = { value: null };
+  const end = walkJson(text, 0, [], path, found, 0);
+  if (skipSpace(text, end) !== text.length) throw new UsageError('webhook JSON has trailing data');
+  return found.value;
+}
+
+/** Payment id the handler loads and saves. Refund events use `payment_id`. */
+export function razorpayPaymentId(event) {
+  const name = typeof event?.event === 'string' ? event.event : '';
+  const payment = event?.payload?.payment?.entity;
+  const refund = event?.payload?.refund?.entity;
+  if (name.startsWith('refund.') && typeof refund?.payment_id === 'string') return refund.payment_id;
+  if (typeof payment?.id === 'string') return payment.id;
+  return '';
+}
+
+/**
+ * Decide a verified Razorpay webhook from the raw body and the payment row
+ * stored for that payment id. A UsageError becomes status 400 with nothing to store.
+ * `status` is the decision httpStatus. Ship only when `ship` is true.
+ * Persist `payment` in the same transaction as the event id only when `persist` is true.
+ * @param {{
+ *   event: object,
+ *   eventId: string,
+ *   rawBody?: string|Buffer,
+ *   storedPayment?: { state?: string, capturedMinor?: unknown, refundedMinor?: unknown, seenEventIds?: string[] }|null,
+ *   expectedAmount?: unknown,
+ *   signatureVerified?: boolean,
+ * }} input
+ */
+export function planRazorpayWebhook(input) {
+  try {
+    assertObject(input);
+    const event = input.event;
+    if (!event || typeof event !== 'object' || Array.isArray(event)) throw new UsageError('event must be an object');
+    const eventName = typeof event.event === 'string' ? event.event : '';
+    const payment = event.payload?.payment?.entity;
+    const stored = input.storedPayment && typeof input.storedPayment === 'object' ? input.storedPayment : {};
+    const amountMinor = webhookAmount(eventName, event, input.rawBody);
+    const expectedMinor = input.expectedAmount === undefined || input.expectedAmount === null
+      ? undefined
+      : subunitString(input.expectedAmount);
+    const decision = decideRazorpayEvent({
+      signatureVerified: input.signatureVerified === true,
+      eventId: input.eventId ?? '',
+      event: eventName,
+      amountMinor,
+      expectedMinor,
+      state: stored.state,
+      capturedMinor: blankMinor(stored.capturedMinor),
+      refundedMinor: blankMinor(stored.refundedMinor),
+      seenEventIds: stored.seenEventIds,
+      paymentCaptured: typeof payment?.captured === 'boolean' ? payment.captured : undefined,
+    });
+    const persist = decision.storeEventId === true;
+    const priorSeen = Array.isArray(stored.seenEventIds)
+      ? stored.seenEventIds.filter((id) => typeof id === 'string')
+      : [];
+    const eventId = typeof input.eventId === 'string' ? input.eventId : '';
+    const seenEventIds = persist && eventId.length > 0 && !priorSeen.includes(eventId)
+      ? [...priorSeen, eventId]
+      : [...priorSeen];
+    return {
+      status: decision.httpStatus,
+      decision,
+      paymentId: razorpayPaymentId(event),
+      persist,
+      ship: persist && decision.fulfil === true,
+      payment: {
+        state: decision.state,
+        capturedMinor: decision.capturedMinor,
+        refundedMinor: decision.refundedMinor,
+        seenEventIds,
+      },
+    };
+  } catch (error) {
+    if (error instanceof UsageError) {
+      return { status: 400, decision: null, paymentId: '', persist: false, ship: false, payment: null, error: error.message };
+    }
+    throw error;
+  }
+}
+
+function blankMinor(value) {
+  if (value === undefined || value === null || value === '') return undefined;
+  return subunitString(value);
+}
+
+function webhookAmount(eventName, event, rawBody) {
+  const refund = eventName.startsWith('refund.');
+  const path = refund
+    ? ['payload', 'refund', 'entity', 'amount']
+    : ['payload', 'payment', 'entity', 'amount'];
+  const parsed = refund ? event?.payload?.refund?.entity?.amount : event?.payload?.payment?.entity?.amount;
+  if (rawBody !== undefined && rawBody !== null) {
+    const token = jsonIntegerToken(rawBody, path);
+    if (token === null) {
+      if (parsed !== undefined && parsed !== null) throw new UsageError('webhook amount is not a plain integer in the raw body');
+      return undefined;
+    }
+    if (parsed !== undefined && parsed !== null && subunitString(parsed) !== token) {
+      throw new UsageError('webhook amount does not match the raw body');
+    }
+    return token;
+  }
+  if (parsed === undefined || parsed === null) return undefined;
+  return subunitString(parsed);
+}
+
+function rawText(rawBody) {
+  if (typeof rawBody === 'string') return rawBody;
+  if (Buffer.isBuffer(rawBody)) return rawBody.toString('utf8');
+  throw new UsageError('rawBody must be a string or a Buffer');
+}
+
+function walkJson(text, i, at, path, found, depth) {
+  if (depth > JSON_DEPTH) throw new UsageError('JSON nesting is deeper than 32');
+  i = skipSpace(text, i);
+  const c = text[i];
+  if (c === '{') return walkObject(text, i, at, path, found, depth);
+  if (c === '[') return walkArray(text, i, at, path, found, depth);
+  if (c === '"') return skipJsonString(text, i);
+  if (c === 't' || c === 'f' || c === 'n') return skipLiteral(text, i);
+  if (c === '-' || isDigitChar(c)) return skipNumber(text, i);
+  throw new UsageError('webhook JSON is malformed');
+}
+
+function walkObject(text, i, at, path, found, depth) {
+  i += 1;
+  i = skipSpace(text, i);
+  if (text[i] === '}') return i + 1;
+  while (i < text.length) {
+    if (text[i] !== '"') throw new UsageError('webhook JSON is malformed');
+    const key = readJsonKey(text, i);
+    i = skipSpace(text, key.end);
+    if (text[i] !== ':') throw new UsageError('webhook JSON is malformed');
+    i = skipSpace(text, i + 1);
+    const next = at.concat(key.value);
+    if (samePath(next, path)) i = takeIntegerToken(text, i, found);
+    else i = walkJson(text, i, next, path, found, depth + 1);
+    i = skipSpace(text, i);
+    if (text[i] === ',') {
+      i = skipSpace(text, i + 1);
+      continue;
+    }
+    if (text[i] === '}') return i + 1;
+    throw new UsageError('webhook JSON is malformed');
+  }
+  throw new UsageError('webhook JSON is malformed');
+}
+
+function walkArray(text, i, at, path, found, depth) {
+  i += 1;
+  i = skipSpace(text, i);
+  if (text[i] === ']') return i + 1;
+  while (i < text.length) {
+    i = walkJson(text, i, at.concat(''), path, found, depth + 1);
+    i = skipSpace(text, i);
+    if (text[i] === ',') {
+      i = skipSpace(text, i + 1);
+      continue;
+    }
+    if (text[i] === ']') return i + 1;
+    throw new UsageError('webhook JSON is malformed');
+  }
+  throw new UsageError('webhook JSON is malformed');
+}
+
+function takeIntegerToken(text, i, found) {
+  i = skipSpace(text, i);
+  const start = i;
+  if (text[i] === '-') i += 1;
+  if (!isDigitChar(text[i])) throw new UsageError('webhook amount must be an integer');
+  while (isDigitChar(text[i])) i += 1;
+  if (text[i] === '.' || text[i] === 'e' || text[i] === 'E') {
+    throw new UsageError('webhook amount must be an integer');
+  }
+  const token = text.slice(start, i);
+  if (!/^(0|[1-9][0-9]*)$/.test(token)) throw new UsageError('webhook amount must be a non-negative integer');
+  if (found.value !== null) throw new UsageError('webhook amount appears twice');
+  found.value = token;
+  return i;
+}
+
+function skipNumber(text, i) {
+  if (text[i] === '-') i += 1;
+  if (!isDigitChar(text[i])) throw new UsageError('webhook JSON is malformed');
+  while (isDigitChar(text[i])) i += 1;
+  if (text[i] === '.') {
+    i += 1;
+    if (!isDigitChar(text[i])) throw new UsageError('webhook JSON is malformed');
+    while (isDigitChar(text[i])) i += 1;
+  }
+  if (text[i] === 'e' || text[i] === 'E') {
+    i += 1;
+    if (text[i] === '+' || text[i] === '-') i += 1;
+    if (!isDigitChar(text[i])) throw new UsageError('webhook JSON is malformed');
+    while (isDigitChar(text[i])) i += 1;
+  }
+  return i;
+}
+
+function skipLiteral(text, i) {
+  const rest = text.slice(i, i + 5);
+  if (rest.startsWith('true')) return i + 4;
+  if (rest.startsWith('false')) return i + 5;
+  if (rest.startsWith('null')) return i + 4;
+  throw new UsageError('webhook JSON is malformed');
+}
+
+function skipJsonString(text, i) {
+  return readJsonKey(text, i).end;
+}
+
+function readJsonKey(text, i) {
+  if (text[i] !== '"') throw new UsageError('webhook JSON is malformed');
+  i += 1;
+  let value = '';
+  while (i < text.length) {
+    const c = text[i];
+    if (c === '"') return { value, end: i + 1 };
+    if (c === '\\') {
+      const esc = text[i + 1];
+      if (esc === 'u') {
+        const hex = text.slice(i + 2, i + 6);
+        if (!/^[0-9a-fA-F]{4}$/.test(hex)) throw new UsageError('webhook JSON is malformed');
+        value += String.fromCharCode(Number.parseInt(hex, 16));
+        i += 6;
+        continue;
+      }
+      const map = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
+      if (map[esc] === undefined) throw new UsageError('webhook JSON is malformed');
+      value += map[esc];
+      i += 2;
+      continue;
+    }
+    if (c !== undefined && c < ' ') throw new UsageError('webhook JSON is malformed');
+    value += c;
+    i += 1;
+  }
+  throw new UsageError('webhook JSON is malformed');
+}
+
+function samePath(left, right) {
+  if (left.length !== right.length) return false;
+  for (let i = 0; i < left.length; i += 1) if (left[i] !== right[i]) return false;
+  return true;
+}
+
+function skipSpace(text, i) {
+  while (text[i] === ' ' || text[i] === '\n' || text[i] === '\r' || text[i] === '\t') i += 1;
+  return i;
+}
+
+function isDigitChar(char) {
+  return char !== undefined && char >= '0' && char <= '9';
+}
+
+function amountRetryDecision(domain, rules, base, action, error) {
+  return decision(domain, rules, {
+    ...base,
+    valid: false,
+    httpStatus: 400,
+    action,
+    fulfil: false,
+    duplicate: false,
+    storeEventId: false,
+    errors: [error],
+    warnings: [AMOUNT_RETRY_WARNING],
   });
 }
 

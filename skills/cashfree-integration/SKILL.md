@@ -65,7 +65,7 @@ Rules data is `scripts/_rules/cashfree.json`, as of 2026-11-01.
 - The timestamp string is used exactly. It is not trimmed and it is not rewritten from milliseconds to seconds before the HMAC.
 - A 64-character hex digest is rejected with reason `expected base64`. Base64 is the standard alphabet with padding. Comparison uses `timingSafeEqual` only when both MAC buffers have the same length.
 - Versions `2025-01-01` and `2026-01-01` are accepted. Both sample tables include `x-idempotency-key`. Version `2023-08-01` does not, and this skill rejects it. [Payment webhooks](https://www.cashfree.com/docs/api-reference/payments/latest/payments/webhooks). The [2025-01-01 header table](https://www.cashfree.com/docs/api-reference/payments/previous/v2025-01-01/payments/webhooks) shows timestamp `1746427759733`.
-- Deduplicate on `x-idempotency-key`. The [overview](https://www.cashfree.com/docs/api-reference/payments/latest/webhooks/overview) text says `x-idempotency-header`. The header table says `x-idempotency-key`. This skill follows the table. A duplicate returns 200 and does not fulfil again. Store the key with a unique constraint in the same transaction as the side effect.
+- Deduplicate on `x-idempotency-key`. The [overview](https://www.cashfree.com/docs/api-reference/payments/latest/webhooks/overview) text says `x-idempotency-header`. The header table says `x-idempotency-key`. This skill follows the table. A duplicate returns 200 and does not fulfil again. Store the key with a unique constraint in the same transaction as the side effect. On `needs_amount` or `amount_mismatch`, `storeKey` is false and `httpStatus` is 400. Do not store the key. Return non-2xx so Cashfree can retry. Storing the key would make that retry a duplicate that never fulfils.
 - Fulfil only when `payment_status` is `SUCCESS`. `FAILED`, `PENDING`, and `NOT_ATTEMPTED` do not fulfil. A later `SUCCESS` after `FAILED` does. A later `FAILED` does not undo `SUCCESS`. [Idempotency](https://www.cashfree.com/docs/api-reference/payments/latest/webhooks/idempotency).
 - Replay window: 300 seconds, inclusive. 301 seconds is `stale`. The same distance in the future is `future`. The number is the [Subscriptions](https://www.cashfree.com/docs/api-reference/payments/latest/subscription/webhook-signature) recommendation ("5 minutes"). The Payment Gateway signature page does not publish a number. Pass a smaller `toleranceSec` to tighten the window. A larger value is rejected. The client secret is server-side only. The App ID may be in the client. Do not put the secret in a browser bundle, a mobile app, a public env prefix, or a log.
 - Milliseconds versus seconds: a numeric timestamp greater than `1000000000000` is treated as milliseconds. Any smaller integer is treated as seconds. Official samples are milliseconds. Cashfree does not publish this threshold, so the rule is `verified: false`. Any result that applies it sets `confirm: true` and includes "Confirm with the official source before relying on this."
@@ -76,36 +76,80 @@ When `confirm` is true, tell the user and do not drop the flag. The signature al
 
 Copy from [references/handlers.md](references/handlers.md). Do not pass `JSON.stringify(req.body)`. A parser can turn `payment_amount` `170.00` into `170`. `jsonDecimalToken(rawBody, "payment_amount")` returns the original digits, including when a newline or tab follows the colon. A field name inside a string is not that field. Keys are decoded the way `JSON.parse` decodes them, so `"payment_amoun\u0074"` is `payment_amount`. Every structural `payment_amount` counts, whatever its value. Two of them return null even when the decimal text is the same. A value that is null, a boolean, a string, an object, or an array returns null. A `payment_amount` nested inside the value of another `payment_amount` is not accepted. The kept token is checked against `JSON.parse`: the parsed value must be a finite number equal to that token, and any disagreement returns null. Malformed JSON, including a stray colon, returns null. An exponent returns null. Nesting deeper than 32 objects or arrays returns null and does not throw. Null is `amount_mismatch` and does not fulfil.
 
-Express, registered before `express.json()`:
+Express, registered before `express.json()`. Next.js and Fastify in [references/handlers.md](references/handlers.md) call the same [`examples/apply-webhook.mjs`](examples/apply-webhook.mjs). That file is the node-pg transaction: `query` returns `{ rows, rowCount }`, the order is inserted with `ON CONFLICT DO NOTHING` before `SELECT ... FOR UPDATE`, and the route ships only after it returns. Catch `UsageError` from `verifyCashfreeWebhook` and return 400. Do not keep a second Fastify copy here.
 
 ```javascript
-app.post('/cashfree/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+import pg from 'pg';
+import { UsageError, jsonDecimalToken, verifyCashfreeWebhook } from './cashfree.mjs';
+import { applyCashfreeWebhook } from './examples/apply-webhook.mjs';
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+
+app.post('/cashfree/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const rawBody = req.body;
-  const result = verifyCashfreeWebhook({
-    rawBody,
-    timestamp: req.get('x-webhook-timestamp'),
-    signature: req.get('x-webhook-signature'),
-    secret: process.env.CASHFREE_CLIENT_SECRET,
-    nowMs: Date.now(),
-  });
+  let result;
+  try {
+    result = verifyCashfreeWebhook({
+      rawBody,
+      timestamp: req.get('x-webhook-timestamp'),
+      signature: req.get('x-webhook-signature'),
+      secret: process.env.CASHFREE_CLIENT_SECRET,
+      nowMs: Date.now(),
+    });
+  } catch (error) {
+    if (error instanceof UsageError) return res.status(400).end();
+    throw error;
+  }
   if (!result.valid) return res.status(400).end();
-  // Insert x-idempotency-key in the same transaction as the side effect, then return 200.
-  res.status(200).end();
+  let event;
+  try {
+    event = JSON.parse(rawBody.toString('utf8'));
+  } catch {
+    return res.status(400).end();
+  }
+  const client = await pool.connect();
+  try {
+    const decision = await applyCashfreeWebhook(client, {
+      signatureVerified: true,
+      orderId: event?.data?.order?.order_id,
+      version: req.get('x-webhook-version') ?? '',
+      idempotencyKey: req.get('x-idempotency-key') ?? '',
+      paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
+      paymentAmount: jsonDecimalToken(rawBody, 'payment_amount'),
+      expectedAmount: lookupStoredOrderAmount(event?.data?.order?.order_id),
+    });
+    if (decision.fulfil) ship(event?.data?.order?.order_id);
+    return res.status(decision.httpStatus).end();
+  } finally {
+    client.release();
+  }
 });
 ```
 
 Next.js route handler:
 
 ```javascript
+import pg from 'pg';
+import { UsageError, jsonDecimalToken, verifyCashfreeWebhook } from '../../../scripts/cashfree.mjs';
+import { applyCashfreeWebhook } from '../../../examples/apply-webhook.mjs';
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+
 export async function POST(req) {
   const rawBody = await req.text();
-  const result = verifyCashfreeWebhook({
-    rawBody,
-    timestamp: req.headers.get('x-webhook-timestamp'),
-    signature: req.headers.get('x-webhook-signature'),
-    secret: process.env.CASHFREE_CLIENT_SECRET,
-    nowMs: Date.now(),
-  });
+  let result;
+  try {
+    result = verifyCashfreeWebhook({
+      rawBody,
+      timestamp: req.headers.get('x-webhook-timestamp'),
+      signature: req.headers.get('x-webhook-signature'),
+      secret: process.env.CASHFREE_CLIENT_SECRET,
+      nowMs: Date.now(),
+    });
+  } catch (error) {
+    if (error instanceof UsageError) return new Response(null, { status: 400 });
+    throw error;
+  }
   if (!result.valid) return new Response(null, { status: 400 });
   let event;
   try {
@@ -113,39 +157,26 @@ export async function POST(req) {
   } catch {
     return new Response(null, { status: 400 });
   }
-  const paymentAmount = jsonDecimalToken(rawBody, 'payment_amount');
-  const decision = decideCashfreeEvent({
-    signatureVerified: true,
-    version: req.headers.get('x-webhook-version') ?? '',
-    idempotencyKey: req.headers.get('x-idempotency-key') ?? '',
-    paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
-    paymentAmount,
-    expectedAmount: lookupStoredOrderAmount(event?.data?.order?.order_id),
-  });
-  if (decision.action === 'amount_mismatch' || decision.action === 'needs_amount') {
-    return new Response(null, { status: 400 });
+  const client = await pool.connect();
+  try {
+    const decision = await applyCashfreeWebhook(client, {
+      signatureVerified: true,
+      orderId: event?.data?.order?.order_id,
+      version: req.headers.get('x-webhook-version') ?? '',
+      idempotencyKey: req.headers.get('x-idempotency-key') ?? '',
+      paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
+      paymentAmount: jsonDecimalToken(rawBody, 'payment_amount'),
+      expectedAmount: lookupStoredOrderAmount(event?.data?.order?.order_id),
+    });
+    if (decision.fulfil) ship(event?.data?.order?.order_id);
+    return new Response(null, { status: decision.httpStatus });
+  } finally {
+    client.release();
   }
-  // Ship only when decision.fulfil is true. Return 200 only after that commit.
-  if (!decision.fulfil) return new Response(null, { status: decision.httpStatus });
-  return new Response(null, { status: 200 });
 }
 ```
 
-Fastify:
-
-```javascript
-fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
-  req.rawBody = body;
-  try {
-    done(null, JSON.parse(body.toString('utf8')));
-  } catch (error) {
-    error.statusCode = 400;
-    done(error, undefined);
-  }
-});
-```
-
-Sign `req.rawBody` plus the timestamp header. Do not sign `JSON.stringify(req.body)`.
+Fastify: use the route in [references/handlers.md](references/handlers.md). It keeps `req.rawBody`, calls `applyCashfreeWebhook` on a pooled client, and returns `decision.httpStatus`. Sign `req.rawBody`. Do not sign `JSON.stringify(req.body)`.
 
 ## Edge cases
 
@@ -157,7 +188,8 @@ Sign `req.rawBody` plus the timestamp header. Do not sign `JSON.stringify(req.bo
 - The value `1000000000000` is not greater than the threshold, so it is treated as seconds. `1000000000001` is milliseconds.
 - Version `2023-08-01` is `unexpected_version`. An empty `x-idempotency-key` is `missing_idempotency_key`.
 - Keep `170.00` as the string `170.00`. Do not run the amount through a JSON number. `170.000` and `0.0001` are `amount_mismatch` (`fulfil: false`), not a usage error.
-- Omitting `paymentAmount` or `expectedAmount` is `needs_amount` and does not fulfil. Pass the order amount you stored, not a value copied from the body.
+- Omitting `paymentAmount` or `expectedAmount` is `needs_amount` and does not fulfil. Pass the order amount you stored, not a value copied from the body. `storeKey` is false and `httpStatus` is 400. Do not store `x-idempotency-key`.
+- `amount_mismatch` (a different amount, an ambiguous token, more than 2 decimal places, or a signed zero) also sets `storeKey` false and `httpStatus` 400. A duplicate structural `payment_amount`, including two copies of the same decimal, is that case. Nesting deeper than 32 is that case and does not throw.
 - `-0` and `-0.00` are `amount_mismatch` and do not fulfil.
 - A top-level JSON array body yields a null `payment_amount` token and does not fulfil.
 - Two structural `payment_amount` fields do not fulfil, including when both say `170.00` and when the second value is null, a boolean, a string, an object, or an array. A key nested inside that value is not the amount. Malformed JSON returns null. Depth above 32 fails closed (null, no `RangeError`, no fulfil).

@@ -33,7 +33,9 @@ From the skill directory:
 node scripts/export-checklist.mjs --json '{"invoiceDate":"2026-03-15","currency":"USD","clientCountry":"US","supplierInIndia":true,"recipientOutsideIndia":true,"placeOfSupplyOutsideIndia":true,"ownBranch":false,"intermediary":false,"forexReceived":true,"lutFiledFY":"2025-26"}'
 ```
 
-Exit `0` when the supply qualifies as an export or a zero-rated SEZ supply and no stated payment is already late. Exit `1` when it does not qualify, or a clock is already late. Exit `2` on a usage error. Stdout is one JSON object.
+Exit `0` when `valid` is true. That means the supply qualifies as an export or a zero-rated SEZ supply, `forexReceived` was not omitted, and no stated payment is already late. Exit `1` when `valid` is false. An SEZ supply that omits `forexReceived` still has `qualifies: true` and exits 1. Exit `2` on a usage error. Stdout is one JSON object.
+
+`qualifies` is the classification: true when every IGST s.2(6) limb passes, or when the supply is to an SEZ and the supplier is in India. `valid` is the checklist: `qualifies`, plus an answer for `forexReceived`, plus no late FEMA or Rule 96A payment. `qualifies` stays true when `valid` is false for a late clock, and it stays true for an SEZ supply that omits `forexReceived`. Clearing `qualifies` in those cases would say the supply is not an export or not zero-rated, which the checklist does not conclude. A late payment is still an export. An unanswered forex question fails the LUT limb and the process, and it does not remove the IGST s.16 classification of the SEZ supply.
 
 `gstRealisationDeadline` is one year from the invoice. `femaRealisationDeadline` is the FEMA date. `rule96aReceiptDeadline` is the later of those two, which is the Rule 96A receipt date when the supply is made without paying IGST. `rule96aTaxPaymentDeadline` is 15 days after that.
 
@@ -77,6 +79,7 @@ Rules data is `scripts/_rules/gst.json` and `scripts/_rules/fema.json`, as of 20
 - While the 15-month window is open, a payment after the one-year anniversary can still be inside Rule 96A, because the rule takes the later date. FEMA is still its own clock.
 - Before 1 Oct 2026 the script starts FEMA on the invoice date. For services that are not software, the 2015 regulations say "date of export", and the invoice-date sentence is written for software. That use is UNVERIFIED, so `confirm` is true.
 - Client country India, and not an SEZ, fails "recipient outside India" even if the boolean was set true.
+- An SEZ supply with `forexReceived` omitted has `qualifies: true`, `valid: false`, and exit 1. A non-SEZ invoice that omits it has `qualifies: false` as well, because limb (iv) failed. A late FEMA or Rule 96A date on a supply that qualifies also leaves `qualifies: true` and exits 1.
 - Input over 10 KB, or a zero-width or bidi character, is a usage error. Dates are `YYYY-MM-DD` in IST. Do not parse them with `new Date('YYYY-MM-DD')`.
 
 ## Example prompts

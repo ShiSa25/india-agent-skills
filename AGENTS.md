@@ -54,6 +54,7 @@ Then run `node tools/sync-lib.mjs`. CI runs it with `--check` and fails if a cop
 | `lib/disclaimer.mjs` | `disclaimer(asOf)`, `CONFIRM_SENTENCE`. |
 | `lib/gstin.mjs` | `validateGstin`, `checkChar`, `generateSyntheticGstin`. |
 | `lib/verhoeff.mjs` | `verhoeffValid`, `verhoeffCheckDigit`, `normalizeDigits`, `generateSynthetic`, `leadingDigitFinding`. |
+| `lib/textprep.mjs` | `prepareId`, `foldDocumented`, `asciiUpper`, `asciiLower`, `hasFoldedLookalike`. Uppercase only ASCII `a-z`. Map fullwidth digits U+FF10–U+FF19 and warn. Leave compatibility and case-fold look-alikes unchanged so a charset or decimal check rejects them. Do not NFKC the whole string. Aadhaar and PII scanners may still fold those characters so a look-alike is caught. |
 | `lib/vendor/qrcodegen.mjs` | Nayuki QR, MIT header kept. `qrcodegen.QrCode.encodeText(text, qrcodegen.QrCode.Ecc.MEDIUM)`. |
 
 `leadingDigitFinding` returns `confirm: true` for an Aadhaar-shaped number that starts with 0 or 1. That rule is unpublished by UIDAI. Warn. Do not reject on it alone. `999999999999` starts with 9 and does not trip it.

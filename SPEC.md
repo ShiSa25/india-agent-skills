@@ -47,7 +47,7 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 - **Dates:** all date logic runs in IST (`Asia/Kolkata`, UTC+05:30, no DST). Inputs are `YYYY-MM-DD` strings. Never use `new Date('YYYY-MM-DD')` (that parses as UTC); use `lib/fy.mjs`.
 - **FY:** 1 Apr–31 Mar. `fyOf('2026-03-31') -> "2025-26"`, `fyOf('2026-04-01') -> "2026-27"`. Display format `"2025-26"`; the GST portal also uses `"2025-2026"`, so accept both on input.
 - **Input sanitisation:**
-  - Trim the input. Strip ASCII spaces and hyphens for IDs, and also a character whose compatibility decomposition is only an ASCII space or hyphen. Uppercase only ASCII `a-z` for PAN, GSTIN, IFSC, and other codes. Map fullwidth digits U+FF10–U+FF19 to ASCII 0-9 and warn. Do not run NFKC on the whole string: a character that becomes an ASCII letter or digit only through compatibility decomposition or default case folding is a look-alike and must fail the charset or decimal check. That includes long s (U+017F), Kelvin sign (U+212A), Latin ligatures, Roman numerals, fullwidth Latin letters, dotless i (U+0131), sharp s (U+00DF), capital sharp s (U+1E9E), and superscript or circled digits. Cyrillic look-alikes stay rejected too. Reject zero-width characters.
+  - Trim the input. Strip ASCII spaces and hyphens for IDs, and also a character whose compatibility decomposition is only an ASCII space or hyphen. Uppercase only ASCII `a-z` for PAN, GSTIN, IFSC, and other codes. Map fullwidth digits U+FF10–U+FF19 to ASCII 0-9 and warn. Do not run NFKC on the whole string: a character that becomes an ASCII letter or digit only through compatibility decomposition or default case folding is a look-alike and must fail the charset or decimal check. That includes long s (U+017F), Kelvin sign (U+212A), Latin ligatures, Roman numerals, fullwidth Latin letters, dotless i (U+0131), sharp s (U+00DF), capital sharp s (U+1E9E), and superscript or circled digits. Cyrillic look-alikes stay rejected too. Reject zero-width characters. Implement that fold in `lib/textprep.mjs` (`prepareId`, `foldDocumented`, `asciiUpper`, `hasFoldedLookalike`). Scanners that mask Aadhaar or detect PII may still fold compatibility characters so a look-alike is caught. The checker does not.
   - Limit input length to 10 KB to prevent regex DoS; use only anchored regexes with no nested quantifiers.
 - **Crypto:** `crypto.timingSafeEqual`, only on equal-length Buffers; check the length first.
 - **Unicode:** the rupee sign is U+20B9 `₹`. Never write "Rs." in generated invoices unless the user asks for it.
@@ -149,12 +149,16 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
   - 17-character invoice number → error; `INV/2026-27/0001` (16 characters) → ok.
   - SEZ recipient in the same state → IGST.
   - Export under LUT → IGST 0 and the endorsement string, byte-exact.
+- **Fullwidth and look-alikes:** fullwidth digits in an invoice number, date, or amount are mapped to ASCII. A fullwidth Latin letter, a superscript digit, or another compatibility look-alike is rejected. The string is not NFKC-normalised.
+- **Deemed export:** `supplyType: 'deemed-export'` is accepted as a label. This section does not define the deemed-export tax split (CGST/SGST, IGST, or LUT). The code must not invent one. Deemed export is not zero-rated and is not forced onto IGST. The intra-state or inter-state arithmetic used for any other non-export, non-SEZ supply may still run, and that output is not a deemed-export ruling.
 
 ### 1.3 gst-e-invoice-json  (Agent 1)
 - **Signature:** `buildEinvoice(invoice) -> object` and `validateEinvoice(obj) -> {valid, errors[{path,msg}]}`. It never calls an IRP.
 - **Schema v1.1:** notified by CGST Notification 60/2020 (30 Jul 2020). PDF: einvoice1.gst.gov.in/Documents/E-INVOICE-SCHEMA.pdf (that PDF is an older draft showing `1.00`; emit `"Version":"1.1"`).
 - **Key fields:** `TranDtls.TaxSch="GST"`; `SupTyp` ∈ {B2B, SEZWP, SEZWOP, EXPWP, EXPWOP, DEXP}; `RegRev` Y/N; `DocDtls.Typ` ∈ {INV, CRN, DBN}; `DocDtls.No` ≤ 16 characters; `DocDtls.Dt` `DD/MM/YYYY`.
-- **Export buyer:** `Gstin:"URP"`, `Pos:"96"`, `Stcd:"96"`, `Pin:999999`. Code 96 is confirmed in MasterCodes; URP and 999999 are secondary (ClearTax/IRP sandbox), so mark them verified:false.
+- **Export buyer:** `Gstin:"URP"`, `Pos:"96"`, `Stcd:"96"`. Code 96 is confirmed in MasterCodes. `URP` is named in Notification 60/2020. `Pin:999999` is IRP practice and stays `verified: false`: the notified schema says an export PIN need not be given. Build still writes `999999` and sets `confirm`. A missing, null, or blank direct-export PIN stays valid and warns.
+- **`IgstOnIntra` (NIC error list):** `Y` is an error for export and SEZ, including a same-state SEZ supply (2268). `Y` is an error when the supplier state and the place of supply differ (2262). Intra-state IGST is the 2172 exception: `Y` is accepted for B2B or deemed export only when `RegRev` is `Y` (2294).
+- **PIN (NIC error list):** buyer PIN `999999` is rejected for B2B, SEZ, and deemed export (2274). An empty string or null does not skip that check. Supplier PIN `999999` is rejected on every supply type (2276). A direct-export (`EXPWP` / `EXPWOP`) PIN that is present and is not `999999` is an error (2275).
 - **Totals:** `ValDtls` = the sum of items. Allow a ±₹1 rounding tolerance only as a warning.
 - **Applicability (einvoice.gst.gov.in; GSTN advisory 543 of 5 Nov 2024):**
   - Mandatory where AATO > ₹5 crore in any FY from 2017-18 (from 1 Aug 2023).
@@ -169,7 +173,9 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
   - Item totals mismatch → error.
 
 ### 1.4 freelancer-export-compliance  (Agent 2)
-- **Signature:** `exportChecklist({invoiceDate, currency, clientCountry, lutFiledFY?, paymentReceivedDate?, sez?}) -> {fy, lutRequired, gstRealisationDeadline, femaRealisationDeadline, items[], confirm}`.
+- **Signature:** `exportChecklist({invoiceDate, currency, clientCountry, supplierInIndia, recipientOutsideIndia, placeOfSupplyOutsideIndia, ownBranch, intermediary, forexReceived?, lutFiledFY?, paymentReceivedDate?, sez?}) -> {valid, qualifies, isExport, fy, lutRequired, gstRealisationDeadline, femaRealisationDeadline, items[], confirm}`.
+- **`forexReceived`:** limb (iv) passes only when this boolean is `true` (and, for INR, `inrPermittedByRbi` is also `true`). Omitting it fails limb (iv) and the LUT limb. A payment date does not stand in for it.
+- **`qualifies` and `valid`:** `qualifies` is true for an export or a zero-rated SEZ supply (supplier in India and `sez: true`). It stays true when a realisation clock is already late, and it stays true when an SEZ supply omits `forexReceived`. `valid` is true only when `qualifies` is true, `forexReceived` was not omitted, and no stated payment is already late. The process exits 0 when `valid` is true and 1 when `valid` is false. An SEZ supply with `forexReceived` omitted therefore exits 1 with `qualifies: true`. Do not set `qualifies` false whenever `valid` is false: a late clock is still an export, and an unanswered forex question does not remove the IGST s.16 classification of the SEZ supply.
 - **Rules:**
   - **Export of services (IGST s.2(6)), all five conditions:** supplier in India; recipient outside India; place of supply outside India; paid in convertible foreign exchange (or INR where RBI permits); not merely establishments of the same person.
     - The skill asks a yes/no for each condition. If any answer is no, it is not an export, so GST applies.
@@ -218,9 +224,9 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
   - Amounts are in the smallest subunit: INR paise (×100). Zero-decimal currencies such as JPY ×1.
   - Three-decimal currencies KWD, BHD, OMR are ×1000 **and the last digit must be 0** (295.991 → reject, or round to 295990 with a warning).
   - INR minimum ₹1 = 100 paise (secondary; confirm).
-  - Webhooks are retried for up to 24 hours when there is no 2xx within 5 seconds. Deduplicate on the `x-razorpay-event-id` header, stored atomically, and return 200 on duplicates.
+  - Webhooks are retried for up to 24 hours when there is no 2xx within 5 seconds. Deduplicate on the `x-razorpay-event-id` header, stored atomically, and return 200 on duplicates. Store the id only when `storeEventId` is true.
   - Events can arrive out of order.
-  - `payment.authorized` ≠ paid. Fulfil on `payment.captured` / `order.paid`. Auto-capture is a dashboard setting; uncaptured payments auto-refund after a window (UNVERIFIED duration).
+  - `payment.authorized` ≠ paid. Fulfil on `payment.captured` / `order.paid` only when the payment is not already captured and `amountMinor` and `expectedMinor` are both present and equal. Omitting either then is `needs_amount`: `valid` false, `fulfil` false, and the omission is not stored as `capturedMinor` 0. When `state` is already `captured` or `refunded` and both amounts are omitted, or they match the stored capture, the action is `already_fulfilled` (`httpStatus` 200, do not ship). A mismatch, including a signed zero (`-0`), is `amount_mismatch` and does not fulfil. A later capture does not replace `capturedMinor`. On `needs_amount` and `amount_mismatch`, `storeEventId` is false and `httpStatus` is 400. Do not store the event id, so the provider can retry. Storing it would make the retry a duplicate that never fulfils. Handlers return `decision.httpStatus` and ship only when `fulfil` is true. A duplicate, `already_fulfilled`, `payment.authorized`, `payment.failed`, and a recorded refund are 200 and do not ship. A refund before capture is 500 and is not stored. The raw body amount is a JSON number; read its plain integer token (or a safe non-negative integer) and load `state`, `capturedMinor`, and `refundedMinor` for the payment id. Save the returned state in the same transaction as the event id. Auto-capture is a dashboard setting; uncaptured payments auto-refund after a window (UNVERIFIED duration in the original note; the capture-settings page that was opened says 3 days).
   - Refunds: `refund.processed`/`refund.failed`. A partial refund must be ≤ captured minus refunded (BigInt).
 - **Examples:** Express `express.raw({type:'application/json'})` and Next.js `await req.text()`. Never `JSON.stringify(req.body)`.
 - **Vectors:** HMAC computed in-test with node:crypto; a whitespace change in the body → fail; an uppercase-hex signature → fail (documented choice: no normalisation); a signature of a different length → false with no throw; KWD `"1.005"` → error.
@@ -229,8 +235,9 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 - **Signature:** `verifyCashfreeWebhook({rawBody, timestamp, signature, secret, nowMs, toleranceSec=300}) -> {valid, reason}`.
 - **Rules (cashfree.com/docs api-reference webhooks/signature-verification, as of 1 Nov 2026):**
   - Signature = Base64(HMAC-SHA256(`x-webhook-timestamp` + rawBody, client secret)), compared with `x-webhook-signature`.
-  - Version header `x-webhook-version: 2025-01-01`; deduplicate on `x-idempotency-key`.
-  - Replay window: Cashfree does not publish a number in what we read, so the **300-second tolerance is our default (UNVERIFIED as a Cashfree requirement)**. The timestamp is in ms vs s — detect it: a value > 1e12 means ms.
+  - Version header `x-webhook-version: 2025-01-01` (and `2026-01-01`); deduplicate on `x-idempotency-key`. Store the key only when `storeKey` is true. A duplicate returns 200 and does not fulfil again.
+  - Fulfil on `payment_status` `SUCCESS` only when `paymentAmount` matches `expectedAmount`. Read the amount with `jsonDecimalToken` from the raw body. Two structural `payment_amount` fields, a non-decimal value, a top-level JSON array, malformed JSON, an exponent, or nesting deeper than 32 returns null and does not fulfil (no throw on the depth cap). More than 2 decimal places or a signed zero (`-0`, `-0.00`) is `amount_mismatch` and does not throw. Omitting `paymentAmount` or `expectedAmount` is `needs_amount`. On `needs_amount` and `amount_mismatch`, `storeKey` is false and `httpStatus` is 400. Do not store the idempotency key, so Cashfree can retry.
+  - Replay window: Cashfree does not publish a number in what we read, so the **300-second tolerance is our default (UNVERIFIED as a Cashfree requirement)**. The timestamp is in ms vs s — detect it: a value > 1e12 means ms. Handlers call `jsonDecimalToken` and `decideCashfreeEvent` after `verifyCashfreeWebhook`. They return `decision.httpStatus` and ship only when `fulfil` is true. `needs_amount` and `amount_mismatch` are 400 and do not store the key. A duplicate and a recorded non-success status are 200 and do not ship.
 - **Vectors:** valid; tampered body; stale timestamp at +301 s → reject; hex digest supplied → reject with "expected base64".
 
 ### 1.8 upi-payment-links  (Agent 4)
@@ -260,6 +267,7 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
   - Indian grouping: the last 3 digits, then groups of 2.
   - Implement it with BigInt string math. Node 24 `Intl en-IN` gives `12,34,567` and `-₹12,34,567.50`, and with compact it gives `1.2Cr`. Do not rely on it for parity, because ICU differs across versions.
 - **Words:** units are Thousand, Lakh, Crore. Above 99 crore, continue as "Hundred Crore", "Thousand Crore" (convention; there is no "Arab" by default).
+- **Input:** fullwidth digits U+FF10–U+FF19 are mapped to ASCII. Superscript, circled, and other compatibility digits are rejected. The string is not NFKC-normalised. A minus sign may come before `₹`.
 - **Negatives:** `-₹1,234.00` (minus before ₹), with an option for accounting parentheses `(₹1,234.00)`.
 - **Vectors:**
   - 0 → `₹0.00` / "Rupees Zero Only".
@@ -271,7 +279,7 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
   - `"1e5"` → error.
 
 ### 1.10 indian-id-validators  (Agent 5)
-- **PAN:** `^[A-Z]{3}[ABCFGHJLPT][A-Z][0-9]{4}[A-Z]$`. The 4th character is the holder type: P individual, C company, H HUF, F firm/LLP, A AOP, T trust, B BOI, L local authority, J artificial juridical person, G government.
+- **PAN:** `^[A-Z]{3}[ABCFGHJLPT][A-Z][0-9]{4}[A-Z]$`. The 4th character is the holder type: P individual, C company, H HUF, F firm/LLP, A AOP, T trust, B BOI, L local authority, J artificial juridical person, G government. Uppercase only ASCII `a-z` before the charset check. Fullwidth digits are mapped and warned. Look-alikes named in §0.3 are rejected. Do not NFKC the whole string.
   - The 5th character is the surname/name initial (cannot be checked).
   - There is no public checksum on the 10th character, so don't claim one.
 - **TAN:** `^[A-Z]{4}[0-9]{5}[A-Z]$`.
@@ -286,7 +294,7 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 ### 1.11 aadhaar-safe-handling  (Agent 5)
 - **Signatures:** `verhoeffValid(s)`, `generateSynthetic(seed)`, `mask(s) -> "XXXX XXXX 1234"`, and `scanText(text) -> [{line, masked}]`.
 - **Rules:**
-  - 12 digits plus a Verhoeff check digit.
+  - 12 digits plus a Verhoeff check digit. The checker maps fullwidth digits U+FF10–U+FF19 and rejects superscript and circled digits. The scanner still folds those, and other Unicode decimal digits, so a look-alike number is masked.
   - **First digit not 0/1** is a common implementation rule, but UIDAI does not publish it. Flag it as a warning only (UNVERIFIED).
   - Masking shows the last 4 digits only.
   - Aadhaar Act s.29 restricts use and sharing of core biometric and identity information. Full numbers must be stored only in an Aadhaar Data Vault (UIDAI circular/FAQ; site flaky, mark verified:false for the details).
@@ -306,11 +314,11 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 ### 1.13 sms-otp-dlt  (Agent 6)
 - **Rules:**
   - Templates must be registered on DLT; variables are `{#var#}`.
-  - Since **1 Oct 2024**, URLs/APK/OTT links and call-back numbers in commercial SMS must be whitelisted (TRAI PR 53/2024).
+  - Since **1 Oct 2024**, a URL that is not in `whitelist` is an error. The linter flags `http://`, `https://`, and `www.` text. It does not flag a bare APK or OTT name. Callback numbers were deferred: a callback missing from `callbackWhitelist` is a warning, not an error. Press release 53/2024 had included callbacks; the direction of 30 Aug 2024 and press release 60/2024 leave that date open. URL comparison uses ASCII case folding. A URL that matches a whitelist entry only after NFKC is not whitelisted.
   - From 11 Dec 2024, unregistered PE–TM chains are rejected (TRAI PR 92/2024).
   - Header suffixes -P/-S/-T/-G by category — UNVERIFIED (operator notices, 2025).
   - "Max 2 vars", "var not last word" and "≤ 30 chars per var" are operator guidance (MSG91), not TRAI. Lint them as warnings tagged `source:"operator"`.
-- **Lint checks:** the template matches the rendered message exactly; URL present but not in the whitelist set; brand name present.
+- **Lint checks:** the template matches the rendered message exactly; URL present but not in the whitelist set; brand name present. The linter flags `http://`, `https://`, and `www.` text. It does not flag a bare APK or OTT name. A promotional template without an obvious opt-out (`STOP`, `opt-out`, `unsubscribe`, `block`, ASCII case only) warns even when `sentAtIst` is missing. A Kelvin sign (U+212A) in place of the K does not count as `block`. `sentAtIst` must be zero-padded `HH:MM`. `9:30` is not read as `09:30` and does not count as inside the 10:00–21:00 window. A missing time skips that window check and still runs the opt-out check.
 - **OTP practice:** 6 digits, generated with `crypto.randomInt`, a 5–10 minute TTL, attempt limits, and the OTP never logged.
 - **Vectors:** good template; a URL not whitelisted → error; `{#var#}` as the last word → warning; a 31-character variable → warning; a promotional category sent at 22:00 IST → warning that promotional messages are restricted to 10:00–21:00 IST (UNVERIFIED).
 
@@ -331,3 +339,4 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 - Mobile 6–9 rule.
 - DPDP non-headline penalties.
 - TRAI header suffixes and promotional hours.
+- Deemed-export tax split (CGST/SGST, IGST, or LUT). §1.2 does not define it, and the invoice skill must not invent one.
