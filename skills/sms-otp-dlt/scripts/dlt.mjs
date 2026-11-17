@@ -49,7 +49,7 @@ export function lintDlt(input) {
   if (!templatePrep.ok) errors.push(issue('template', templatePrep.error, 'skill'));
   if (messagePrep && !messagePrep.ok) errors.push(issue('message', messagePrep.error, 'skill'));
   if (templatePrep.changed || messagePrep?.changed) {
-    warnings.push(issue('normalised', 'Input was trimmed or NFKC-normalised.', 'skill'));
+    warnings.push(issue('normalised', 'Input was trimmed, or fullwidth digits were mapped to ASCII, or a separator-only compatibility character was folded.', 'skill'));
   }
 
   const category = normaliseCategory(input.category);

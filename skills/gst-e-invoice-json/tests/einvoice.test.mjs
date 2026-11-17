@@ -165,6 +165,90 @@ describe('schema 1.1', () => {
     assert.ok(deemedInter.errors.some((error) => error.msg.includes('2262')));
   });
 
+  test('supplier PIN 999999 is NIC error 2276', () => {
+    const built = buildEinvoice(invoice());
+    for (const pin of ['999999', ' 999999 ', 999999]) {
+      const payload = structuredClone(built.einvoice);
+      payload.SellerDtls.Pin = pin;
+      const checked = validateEinvoice(payload);
+      assert.equal(checked.valid, false, String(pin));
+      assert.ok(checked.errors.some((error) => error.path === 'SellerDtls.Pin' && error.msg.includes('2276')), String(pin));
+    }
+    const exportDoc = buildEinvoice(invoice({
+      recipient: {
+        name: 'US Client',
+        address: '1 Market Street',
+        loc: 'San Francisco',
+        country: 'United States',
+        deliveryAddress: '1 Market Street, San Francisco',
+      },
+      supplyType: 'export',
+      supplyKind: 'services',
+      lut: true,
+      placeOfSupply: '96',
+      invoiceNumber: 'EXP/2026-27/0002',
+    }));
+    const exportSeller = structuredClone(exportDoc.einvoice);
+    exportSeller.SellerDtls.Pin = '999999';
+    const exportChecked = validateEinvoice(exportSeller);
+    assert.equal(exportChecked.valid, false);
+    assert.ok(exportChecked.errors.some((error) => error.msg.includes('2276')));
+  });
+
+  test('direct export PIN follows NIC 2275 and treats omission as one case', () => {
+    const built = buildEinvoice(invoice({
+      recipient: {
+        name: 'US Client',
+        address: '1 Market Street',
+        loc: 'San Francisco',
+        country: 'United States',
+        deliveryAddress: '1 Market Street, San Francisco',
+      },
+      supplyType: 'export',
+      supplyKind: 'services',
+      lut: false,
+      placeOfSupply: '96',
+      invoiceNumber: 'EXP/2026-27/0003',
+    }));
+    assert.equal(built.einvoice.TranDtls.SupTyp, 'EXPWP');
+    assert.equal(built.einvoice.BuyerDtls.Pin, '999999');
+    assert.equal(validateEinvoice(built.einvoice).valid, true);
+
+    for (const supTyp of ['EXPWP', 'EXPWOP']) {
+      for (const pin of ['560001', '4000', 110001, '999998']) {
+        const payload = structuredClone(built.einvoice);
+        payload.TranDtls.SupTyp = supTyp;
+        payload.BuyerDtls.Pin = pin;
+        const checked = validateEinvoice(payload);
+        assert.equal(checked.valid, false, `${supTyp} ${pin}`);
+        assert.ok(
+          checked.errors.some((error) => error.path === 'BuyerDtls.Pin' && error.msg.includes('2275')),
+          `${supTyp} ${pin}`,
+        );
+      }
+      const spaced = structuredClone(built.einvoice);
+      spaced.TranDtls.SupTyp = supTyp;
+      spaced.BuyerDtls.Pin = ' 999999 ';
+      const accepted = validateEinvoice(spaced);
+      assert.equal(accepted.valid, true, supTyp);
+      assert.equal(accepted.errors.some((error) => error.msg.includes('2275')), false, supTyp);
+
+      for (const missing of [undefined, null, '', '   ']) {
+        const payload = structuredClone(built.einvoice);
+        payload.TranDtls.SupTyp = supTyp;
+        if (missing === undefined) delete payload.BuyerDtls.Pin;
+        else payload.BuyerDtls.Pin = missing;
+        const checked = validateEinvoice(payload);
+        assert.equal(checked.valid, true, `${supTyp} ${JSON.stringify(missing)}`);
+        assert.equal(checked.errors.some((error) => error.msg.includes('2275')), false, `${supTyp} omitted`);
+        assert.ok(
+          checked.warnings.some((warning) => warning.includes('omitted') && warning.includes('2275')),
+          `${supTyp} ${JSON.stringify(missing)}`,
+        );
+      }
+    }
+  });
+
   test('a null item is rejected without throwing', () => {
     const built = buildEinvoice(invoice());
     const forged = structuredClone(built.einvoice);

@@ -12,6 +12,8 @@
 
 const LIMIT = 10 * 1024;
 
+export const FULLWIDTH_DIGIT_WARNING = 'Fullwidth digits were mapped to ASCII.';
+
 const ZERO_WIDTH = new Set([
   0x180e, 0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x2060, 0x2061, 0x2062, 0x2063, 0x2064, 0xfeff,
 ]);
@@ -32,7 +34,7 @@ export function prepareId(input, options = {}) {
   }
   const warnings = [];
   const folded = foldDocumented(input.trim());
-  if (folded.fullwidthDigits) warnings.push('Input was NFKC-normalised.');
+  if (folded.fullwidthDigits) warnings.push(FULLWIDTH_DIGIT_WARNING);
   if (containsBlocked(folded.text)) {
     return { error: 'Zero-width or bidi control character rejected.', cleaned: '', warnings: [] };
   }

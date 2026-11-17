@@ -203,11 +203,12 @@ describe('edge cases', () => {
     }
   });
 
-  test('NFKC normalises fullwidth digits', () => {
+  test('fullwidth digits are mapped to ASCII', () => {
     const result = validateGstin('\uFF12\uFF17AAACR5055K1Z7');
     assert.equal(result.valid, true);
     assert.equal(result.normalized, '27AAACR5055K1Z7');
-    assert.ok(result.warnings.includes('Input was NFKC-normalised.'));
+    assert.ok(result.warnings.includes('Fullwidth digits were mapped to ASCII.'));
+    assert.equal(result.warnings.includes('Input was NFKC-normalised.'), false);
   });
 
   test('empty, non-string, and overlong input', () => {

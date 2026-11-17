@@ -775,7 +775,7 @@
       "effectiveTo": null,
       "source": "https://einvoice.gst.gov.in/",
       "verified": false,
-      "note": "UNVERIFIED. IRP practice for an export buyer PIN. Notification 60/2020 says the recipient PIN need not be mentioned on an export. Emit 999999 and set confirm."
+      "note": "UNVERIFIED as a value the notified schema requires. Notification 60/2020 says an export recipient PIN need not be mentioned, so an omitted PIN stays valid. NIC error 2275 rejects a direct-export PIN that is present and is not 999999. Emit 999999 and set confirm."
     },
     {
       "id": "gst.einvoice.aato.mandatory",

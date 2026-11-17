@@ -321,6 +321,54 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(jsonDecimalToken('{"data":{"payment_amount":50.00},"payment_amount":1.00}', 'payment_amount'), null);
   });
 
+  test('escaped keys, stray colons, and depth fail closed', () => {
+    const escaped = '{"payment_amoun\\u0074":170.00}';
+    assert.equal(JSON.parse(escaped).payment_amount, 170);
+    assert.equal(jsonDecimalToken(escaped, 'payment_amount'), '170.00');
+    assert.equal(jsonDecimalToken('{"pay\\u006dent_amount":170.00}', 'payment_amount'), '170.00');
+
+    assert.equal(jsonDecimalToken('{"payment_amount":1.00:170.00}', 'payment_amount'), null);
+    assert.equal(jsonDecimalToken('{"payment_amount":170.00:170.00}', 'payment_amount'), null);
+    assert.equal(jsonDecimalToken('{"payment_amount":1.00:1e2}', 'payment_amount'), null);
+    assert.equal(jsonDecimalToken('{"payment_amount":1.00:{"payment_amount":170.00}}', 'payment_amount'), null);
+    assert.equal(jsonDecimalToken('{"a":1:2,"payment_amount":170.00}', 'payment_amount'), '170.00');
+
+    const equal = '{"payment_amount":170.00,"payment_amount":170.00}';
+    assert.equal(jsonDecimalToken(equal, 'payment_amount'), null);
+    const equalEscaped = '{"payment_amount":170.00,"payment_amoun\\u0074":170.00}';
+    assert.equal(JSON.parse(equalEscaped).payment_amount, 170);
+    assert.equal(jsonDecimalToken(equalEscaped, 'payment_amount'), null);
+    const duplicate = decideCashfreeEvent({
+      ...base,
+      idempotencyKey: 'equal-payment-amount',
+      paymentStatus: 'SUCCESS',
+      paymentAmount: jsonDecimalToken(equalEscaped, 'payment_amount'),
+      expectedAmount: '170.00',
+    });
+    assert.equal(duplicate.action, 'amount_mismatch');
+    assert.equal(duplicate.valid, false);
+    assert.equal(duplicate.fulfil, false);
+
+    assert.equal(jsonDecimalToken(nestObjects(32, '{"payment_amount":170.00}'), 'payment_amount'), '170.00');
+    assert.equal(jsonDecimalToken(nestObjects(33, '{"payment_amount":170.00}'), 'payment_amount'), null);
+    const sibling = `{"payment_amount":170.00,"nested":${nestObjects(40, '1')}}`;
+    assert.equal(jsonDecimalToken(sibling, 'payment_amount'), null);
+    let deep = null;
+    assert.doesNotThrow(() => {
+      deep = jsonDecimalToken(nestObjects(8000, '{"payment_amount":170.00}'), 'payment_amount');
+    });
+    assert.equal(deep, null);
+    const overDepth = decideCashfreeEvent({
+      ...base,
+      idempotencyKey: 'over-depth',
+      paymentStatus: 'SUCCESS',
+      paymentAmount: deep,
+      expectedAmount: '170.00',
+    });
+    assert.equal(overDepth.action, 'amount_mismatch');
+    assert.equal(overDepth.fulfil, false);
+  });
+
   test('the replay window cannot be widened and the amount must match', () => {
     assert.throws(
       () => verifyCashfreeWebhook({
@@ -434,6 +482,12 @@ describe('CLI', () => {
     assert.equal(JSON.parse(decision.stdout).fulfil, true);
   });
 });
+
+function nestObjects(depth, leaf) {
+  let body = leaf;
+  for (let i = 1; i < depth; i += 1) body = `{"a":${body}}`;
+  return body;
+}
 
 function baseInput() {
   return {

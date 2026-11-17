@@ -363,7 +363,13 @@ function checkSeller(seller, pack, errors) {
   if (seller.Stcd && !pack.states.some((row) => row.code === seller.Stcd)) {
     errors.push({ path: 'SellerDtls.Stcd', msg: 'Supplier state code is not in the state table.' });
   }
-  if (seller.Pin !== undefined && !/^[1-9][0-9]{5}$/.test(String(seller.Pin))) {
+  const sellerPin = pinText(seller.Pin);
+  if (sellerPin === pack.exportPin.value) {
+    errors.push({
+      path: 'SellerDtls.Pin',
+      msg: `Supplier PIN code cannot be ${pack.exportPin.value} (NIC error 2276).`,
+    });
+  } else if (seller.Pin !== undefined && !/^[1-9][0-9]{5}$/.test(String(seller.Pin))) {
     errors.push({ path: 'SellerDtls.Pin', msg: 'Supplier PIN must be 6 digits.' });
   }
 }
@@ -378,12 +384,10 @@ function checkBuyer(buyer, supTyp, pack, errors, warnings, noteConfirm) {
     if (buyer.Pos !== pack.exportPos.value) errors.push({ path: 'BuyerDtls.Pos', msg: 'Export place of supply must be 96.' });
     if (buyer.Stcd !== pack.exportPos.value) errors.push({ path: 'BuyerDtls.Stcd', msg: 'Export recipient state code must be 96.' });
     if (needsConfirm(pack.exportPin)) {
-      warnings.push('Export buyer PIN 999999 is IRP practice. The notified schema says a recipient PIN need not be mentioned. UNVERIFIED.');
+      warnings.push('Export buyer PIN 999999 is IRP practice. The notified schema says a recipient PIN need not be mentioned. NIC error 2275 rejects a direct-export PIN that is present and is not 999999. UNVERIFIED.');
       noteConfirm();
     }
-    if (buyer.Pin !== undefined && String(buyer.Pin) !== pack.exportPin.value) {
-      warnings.push('Export buyer PIN is not 999999.');
-    }
+    checkExportBuyerPin(buyer, pack, errors, warnings);
   } else if (buyer.Gstin === 'URP') {
     errors.push({ path: 'BuyerDtls.Gstin', msg: `${supTyp || 'This supply'} needs a registered GSTIN. URP is for exports.` });
   } else if (typeof buyer.Gstin === 'string') {
@@ -399,19 +403,38 @@ function checkBuyer(buyer, supTyp, pack, errors, warnings, noteConfirm) {
   if (buyer.Stcd && !pack.states.some((row) => row.code === buyer.Stcd)) {
     errors.push({ path: 'BuyerDtls.Stcd', msg: 'Buyer state code is not in the state table.' });
   }
-  checkBuyerPin(buyer, supTyp, errors);
+  if (supTyp !== 'EXPWP' && supTyp !== 'EXPWOP') checkBuyerPin(buyer, supTyp, errors);
+}
+
+function pinText(value) {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+}
+
+function checkExportBuyerPin(buyer, pack, errors, warnings) {
+  const text = pinText(buyer.Pin);
+  if (text === '') {
+    warnings.push('Direct export buyer PIN was omitted. Notification 60/2020 says it need not be mentioned. NIC error 2275 applies when a PIN other than 999999 is sent.');
+    return;
+  }
+  if (text !== pack.exportPin.value) {
+    errors.push({
+      path: 'BuyerDtls.Pin',
+      msg: `Recipient PIN code should be ${pack.exportPin.value} for a direct export (NIC error 2275).`,
+    });
+  }
 }
 
 function checkBuyerPin(buyer, supTyp, errors) {
-  const pinText = buyer.Pin === undefined || buyer.Pin === null ? '' : String(buyer.Pin).trim();
+  const text = pinText(buyer.Pin);
   const required = supTyp === 'B2B' || supTyp === 'SEZWP' || supTyp === 'SEZWOP' || supTyp === 'DEXP';
-  const sixDigits = /^[1-9][0-9]{5}$/.test(pinText);
+  const sixDigits = /^[1-9][0-9]{5}$/.test(text);
   if (required) {
     if (!sixDigits) {
       errors.push({ path: 'BuyerDtls.Pin', msg: 'Buyer PIN is required and must be 6 digits.' });
       return;
     }
-    if (pinText === '999999') {
+    if (text === '999999') {
       errors.push({
         path: 'BuyerDtls.Pin',
         msg: 'Recipient PIN code cannot be 999999 for a B2B, SEZ, or deemed-export supply (NIC error 2274).',
@@ -419,7 +442,7 @@ function checkBuyerPin(buyer, supTyp, errors) {
     }
     return;
   }
-  if (pinText !== '' && !sixDigits) {
+  if (text !== '' && !sixDigits) {
     errors.push({ path: 'BuyerDtls.Pin', msg: 'Buyer PIN must be 6 digits.' });
   }
 }

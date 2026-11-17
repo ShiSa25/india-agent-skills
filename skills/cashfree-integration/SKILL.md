@@ -74,7 +74,7 @@ When `confirm` is true, tell the user and do not drop the flag. The signature al
 
 ### Raw body
 
-Copy from [references/handlers.md](references/handlers.md). Do not pass `JSON.stringify(req.body)`. A parser can turn `payment_amount` `170.00` into `170`. `jsonDecimalToken(rawBody, "payment_amount")` returns the original digits, including when a newline or tab follows the colon. A number that only looks like the field because a string closed in front of it is not that field. Two structural matches, or an exponent, return null, and that null does not fulfil.
+Copy from [references/handlers.md](references/handlers.md). Do not pass `JSON.stringify(req.body)`. A parser can turn `payment_amount` `170.00` into `170`. `jsonDecimalToken(rawBody, "payment_amount")` returns the original digits, including when a newline or tab follows the colon. A number that only looks like the field because a string closed in front of it is not that field. Keys are decoded the way `JSON.parse` decodes them, so `"payment_amoun\u0074"` is `payment_amount`. Two structural `payment_amount` fields return null even when the decimal text is the same. That is intentional: a duplicated field is ambiguous, and null does not fulfil. An exponent returns null. A second colon after that field records the following number instead of skipping it, so `{"payment_amount":170.00:170.00}` is also null. Nesting deeper than 32 objects or arrays returns null and does not throw. Null is `amount_mismatch` and does not fulfil.
 
 Express, registered before `express.json()`:
 
@@ -138,6 +138,7 @@ Sign `req.rawBody` plus the timestamp header. Do not sign `JSON.stringify(req.bo
 - The value `1000000000000` is not greater than the threshold, so it is treated as seconds. `1000000000001` is milliseconds.
 - Version `2023-08-01` is `unexpected_version`. An empty `x-idempotency-key` is `missing_idempotency_key`.
 - Keep `170.00` as the string `170.00`. Do not run the amount through a JSON number.
+- Two structural `payment_amount` fields do not fulfil, including when both say `170.00`. A JSON escape in the key does not make the second field invisible. A stray colon's number is recorded. Depth above 32 fails closed (null, no `RangeError`, no fulfil).
 - After a client-secret rotation, in-flight webhooks still verify with the secret that signed them.
 - Ids over 10 KB are rejected. The raw body is refused above 1 MB, which is a local cap, not a Cashfree limit. The raw body is not trimmed.
 

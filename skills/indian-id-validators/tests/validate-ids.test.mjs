@@ -65,7 +65,8 @@ describe('PAN', () => {
     const fullwidth = validatePan('ABCPE\uFF11\uFF12\uFF13\uFF14F');
     assert.equal(fullwidth.valid, true);
     assert.equal(fullwidth.normalized, 'ABCPE1234F');
-    assert.ok(fullwidth.warnings.includes('Input was NFKC-normalised.'));
+    assert.ok(fullwidth.warnings.includes('Fullwidth digits were mapped to ASCII.'));
+    assert.equal(fullwidth.warnings.includes('Input was NFKC-normalised.'), false);
   });
 
   test('look-alikes, zero-width characters, empty input, and overlong input are rejected', () => {

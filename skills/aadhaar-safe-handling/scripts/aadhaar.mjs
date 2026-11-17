@@ -6,7 +6,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 import { CONFIRM_SENTENCE, disclaimer } from './_lib/disclaimer.mjs';
 import { loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
-import { foldDocumented } from './_lib/textprep.mjs';
+import { FULLWIDTH_DIGIT_WARNING, foldDocumented } from './_lib/textprep.mjs';
 import {
   aadhaarCandidates,
   foldAadhaarLine,
@@ -39,7 +39,7 @@ export function checkAadhaar(input, options = {}) {
   const folded = foldDocumented(input.trim());
   if (containsBlocked(folded.text)) return { ...shell, errors: ['Zero-width or bidi control character rejected.'] };
   const warnings = [];
-  if (folded.fullwidthDigits) warnings.push('Input was NFKC-normalised.');
+  if (folded.fullwidthDigits) warnings.push(FULLWIDTH_DIGIT_WARNING);
   if (folded.compatibilitySeparators || hasSeparator(folded.text)) warnings.push('Spaces or hyphens were removed.');
   let digits;
   try {
