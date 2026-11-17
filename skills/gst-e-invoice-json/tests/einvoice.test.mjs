@@ -98,13 +98,25 @@ describe('schema 1.1', () => {
     flag.TranDtls.IgstOnIntra = 'Y';
     const intraFlag = validateEinvoice(flag);
     assert.equal(intraFlag.valid, false);
-    assert.ok(intraFlag.errors.some((error) => error.path === 'TranDtls.IgstOnIntra'));
+    assert.ok(intraFlag.errors.some((error) => error.msg.includes('2262')));
 
     const pin = structuredClone(built.einvoice);
     pin.BuyerDtls.Pin = '4000';
     const badPin = validateEinvoice(pin);
     assert.equal(badPin.valid, false);
     assert.ok(badPin.errors.some((error) => error.path === 'BuyerDtls.Pin'));
+    for (const missing of ['', null]) {
+      const empty = structuredClone(built.einvoice);
+      empty.BuyerDtls.Pin = missing;
+      const checkedPin = validateEinvoice(empty);
+      assert.equal(checkedPin.valid, false, String(missing));
+      assert.ok(checkedPin.errors.some((error) => error.path === 'BuyerDtls.Pin'), String(missing));
+    }
+    const exportPin = structuredClone(built.einvoice);
+    exportPin.BuyerDtls.Pin = '999999';
+    const rejectedPin = validateEinvoice(exportPin);
+    assert.equal(rejectedPin.valid, false);
+    assert.ok(rejectedPin.errors.some((error) => error.msg.includes('2274')));
 
     const sez = buildEinvoice(invoice({
       recipient: party(KA2, '29', 'Bengaluru', '560001'),
@@ -114,10 +126,16 @@ describe('schema 1.1', () => {
       invoiceNumber: 'SEZ/2026-27/0001',
     }));
     assert.equal(sez.valid, true);
-    assert.equal(sez.einvoice.TranDtls.IgstOnIntra, 'Y');
-    const sezOff = structuredClone(sez.einvoice);
-    sezOff.TranDtls.IgstOnIntra = 'N';
-    assert.equal(validateEinvoice(sezOff).valid, false);
+    assert.equal(sez.einvoice.TranDtls.SupTyp, 'SEZWP');
+    assert.equal(sez.einvoice.TranDtls.IgstOnIntra, 'N');
+    const sezOn = structuredClone(sez.einvoice);
+    sezOn.TranDtls.IgstOnIntra = 'Y';
+    const sezFlag = validateEinvoice(sezOn);
+    assert.equal(sezFlag.valid, false);
+    assert.ok(sezFlag.errors.some((error) => error.msg.includes('2268')));
+    const sezPin = structuredClone(sez.einvoice);
+    sezPin.BuyerDtls.Pin = '999999';
+    assert.equal(validateEinvoice(sezPin).valid, false);
 
     const intra = buildEinvoice(invoice({
       recipient: party(KA2, '29', 'Bengaluru', '560001'),
@@ -128,7 +146,23 @@ describe('schema 1.1', () => {
     assert.equal(intra.einvoice.TranDtls.IgstOnIntra, 'N');
     const intraOn = structuredClone(intra.einvoice);
     intraOn.TranDtls.IgstOnIntra = 'Y';
-    assert.equal(validateEinvoice(intraOn).valid, false);
+    const intraRejected = validateEinvoice(intraOn);
+    assert.equal(intraRejected.valid, false);
+    assert.ok(intraRejected.errors.some((error) => error.msg.includes('2294')));
+    intraOn.TranDtls.RegRev = 'Y';
+    assert.equal(validateEinvoice(intraOn).valid, true);
+
+    const deemed = structuredClone(intra.einvoice);
+    deemed.TranDtls.SupTyp = 'DEXP';
+    deemed.TranDtls.IgstOnIntra = 'Y';
+    deemed.TranDtls.RegRev = 'N';
+    assert.equal(validateEinvoice(deemed).valid, false);
+    deemed.TranDtls.RegRev = 'Y';
+    assert.equal(validateEinvoice(deemed).valid, true);
+    deemed.BuyerDtls.Pos = '27';
+    const deemedInter = validateEinvoice(deemed);
+    assert.equal(deemedInter.valid, false);
+    assert.ok(deemedInter.errors.some((error) => error.msg.includes('2262')));
   });
 
   test('a null item is rejected without throwing', () => {

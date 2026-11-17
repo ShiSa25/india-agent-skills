@@ -281,6 +281,18 @@ describe('version, idempotency, and fulfilment', () => {
     });
     assert.equal(sameAmount.action, 'already_fulfilled');
     assert.equal(sameAmount.fulfil, false);
+    const token = jsonDecimalToken('{"payment_amount":1.00,"payment_amount":2.00}', 'payment_amount');
+    assert.equal(token, null);
+    const ambiguous = decideCashfreeEvent({
+      ...base,
+      idempotencyKey: 'ambiguous-amount',
+      paymentStatus: 'SUCCESS',
+      paymentAmount: token,
+      expectedAmount: '1.00',
+    });
+    assert.equal(ambiguous.fulfil, false);
+    assert.equal(ambiguous.valid, false);
+    assert.equal(ambiguous.action, 'amount_mismatch');
   });
 
   test('version 2026-01-01 is accepted and 2023-08-01 is not', () => {
@@ -301,8 +313,9 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(JSON.parse(raw).payment_amount, 170);
     assert.equal(jsonDecimalToken('{"payment_amount":1e2}', 'payment_amount'), null);
     assert.equal(jsonDecimalToken('{"payment_amount":1E+2}', 'payment_amount'), null);
+    assert.equal(jsonDecimalToken('{"payment_amount":\n\t170.00}', 'payment_amount'), '170.00');
     assert.equal(
-      jsonDecimalToken('{"description":"prefix \\"payment_amount\\":999","payment_amount":1.00}', 'payment_amount'),
+      jsonDecimalToken('{"description":"payment_amount":999,"payment_amount":1.00}', 'payment_amount'),
       '1.00',
     );
     assert.equal(jsonDecimalToken('{"data":{"payment_amount":50.00},"payment_amount":1.00}', 'payment_amount'), null);

@@ -103,6 +103,10 @@ function assemble(source) {
   if (errors.length > 0) return fail(errors, warnings, false);
 
   const exportSupply = supTyp === 'EXPWP' || supTyp === 'EXPWOP';
+  const sezOrExport = exportSupply || supTyp === 'SEZWP' || supTyp === 'SEZWOP';
+  if (sezOrExport && invoice.igstOnIntra) {
+    warnings.push('IgstOnIntra is N. NIC error 2268 rejects Y for export and SEZ supplies.');
+  }
   const buyerGstin = exportSupply ? pack.exportGstin.value : invoice.recipient.gstin;
   const buyerPos = exportSupply ? pack.exportPos.value : invoice.placeOfSupply.code;
   const buyerStcd = exportSupply ? pack.exportPos.value : invoice.recipient.stateCode || invoice.placeOfSupply.code;
@@ -114,7 +118,7 @@ function assemble(source) {
       TaxSch: pack.taxScheme.value,
       SupTyp: supTyp,
       RegRev: invoice.reverseCharge ? 'Y' : 'N',
-      IgstOnIntra: invoice.igstOnIntra ? 'Y' : 'N',
+      IgstOnIntra: sezOrExport ? 'N' : invoice.igstOnIntra ? 'Y' : 'N',
     },
     DocDtls: {
       Typ: typ,
@@ -395,31 +399,54 @@ function checkBuyer(buyer, supTyp, pack, errors, warnings, noteConfirm) {
   if (buyer.Stcd && !pack.states.some((row) => row.code === buyer.Stcd)) {
     errors.push({ path: 'BuyerDtls.Stcd', msg: 'Buyer state code is not in the state table.' });
   }
-  if (buyer.Pin !== undefined && buyer.Pin !== null && String(buyer.Pin) !== '' && !/^[1-9][0-9]{5}$/.test(String(buyer.Pin))) {
+  checkBuyerPin(buyer, supTyp, errors);
+}
+
+function checkBuyerPin(buyer, supTyp, errors) {
+  const pinText = buyer.Pin === undefined || buyer.Pin === null ? '' : String(buyer.Pin).trim();
+  const required = supTyp === 'B2B' || supTyp === 'SEZWP' || supTyp === 'SEZWOP' || supTyp === 'DEXP';
+  const sixDigits = /^[1-9][0-9]{5}$/.test(pinText);
+  if (required) {
+    if (!sixDigits) {
+      errors.push({ path: 'BuyerDtls.Pin', msg: 'Buyer PIN is required and must be 6 digits.' });
+      return;
+    }
+    if (pinText === '999999') {
+      errors.push({
+        path: 'BuyerDtls.Pin',
+        msg: 'Recipient PIN code cannot be 999999 for a B2B, SEZ, or deemed-export supply (NIC error 2274).',
+      });
+    }
+    return;
+  }
+  if (pinText !== '' && !sixDigits) {
     errors.push({ path: 'BuyerDtls.Pin', msg: 'Buyer PIN must be 6 digits.' });
   }
 }
 
 function checkIgstOnIntra(tran, seller, buyer, errors) {
-  if (tran.IgstOnIntra !== 'Y' && tran.IgstOnIntra !== 'N') return;
+  if (tran.IgstOnIntra !== 'Y') return;
+  const sup = tran.SupTyp;
+  if (sup === 'EXPWP' || sup === 'EXPWOP' || sup === 'SEZWP' || sup === 'SEZWOP') {
+    errors.push({
+      path: 'TranDtls.IgstOnIntra',
+      msg: 'IgstOnIntra cannot be Y for an export or SEZ supply (NIC error 2268).',
+    });
+    return;
+  }
   const sellerState = typeof seller.Stcd === 'string' ? seller.Stcd : '';
   const pos = typeof buyer.Pos === 'string' ? buyer.Pos : '';
-  if (!/^[0-9]{2}$/.test(sellerState) || !/^[0-9]{2}$/.test(pos)) return;
-  const same = sellerState === pos;
-  if (tran.IgstOnIntra === 'Y' && !same) {
+  if (/^[0-9]{2}$/.test(sellerState) && /^[0-9]{2}$/.test(pos) && sellerState !== pos) {
     errors.push({
       path: 'TranDtls.IgstOnIntra',
-      msg: 'IgstOnIntra is Y only when IGST is charged inside one state. Seller state and place of supply differ.',
+      msg: 'IgstOnIntra Y requires the supplier state to match the place of supply (NIC error 2262).',
     });
-  } else if (same && (tran.SupTyp === 'SEZWP' || tran.SupTyp === 'SEZWOP') && tran.IgstOnIntra !== 'Y') {
+    return;
+  }
+  if (tran.RegRev !== 'Y') {
     errors.push({
-      path: 'TranDtls.IgstOnIntra',
-      msg: 'An SEZ supply in the supplier state is IGST. IgstOnIntra must be Y.',
-    });
-  } else if (same && tran.SupTyp === 'B2B' && tran.IgstOnIntra === 'Y') {
-    errors.push({
-      path: 'TranDtls.IgstOnIntra',
-      msg: 'IgstOnIntra Y does not apply to an ordinary intra-state B2B supply.',
+      path: 'TranDtls.RegRev',
+      msg: 'Reverse charge is mandatory when IgstOnIntra is Y (NIC error 2294). Intra-state IGST is the exception in NIC error 2172.',
     });
   }
 }

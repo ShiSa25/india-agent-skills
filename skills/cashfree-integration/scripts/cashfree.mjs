@@ -109,29 +109,119 @@ export function jsonDecimalToken(rawBody, field) {
   const text = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
   if (typeof text !== 'string') throw new UsageError('rawBody must be a string or a Buffer');
   if (!/^[A-Za-z0-9_]{1,64}$/.test(field)) throw new UsageError('field must be an identifier');
-  const key = `"${field}":`;
   let found = null;
-  let i = 0;
-  while (i < text.length) {
-    if (text[i] !== '"') {
-      i += 1;
-      continue;
-    }
-    if (text.startsWith(key, i)) {
-      let j = i + key.length;
-      while (text[j] === ' ') j += 1;
-      const token = readPlainDecimal(text, j);
-      if (token === 'exponent') return null;
-      if (token) {
-        if (found !== null) return null;
-        found = token;
-        i = j + token.length;
+  let ambiguous = false;
+  let exponent = false;
+  walkJson(text, 0, field, {
+    take(token) {
+      if (token === 'exponent') exponent = true;
+      else if (found !== null) ambiguous = true;
+      else found = token;
+    },
+  });
+  if (exponent || ambiguous) return null;
+  return found;
+}
+
+function walkJson(text, index, field, sink) {
+  function skipWs(i) {
+    while (text[i] === ' ' || text[i] === '\n' || text[i] === '\r' || text[i] === '\t') i += 1;
+    return i;
+  }
+  function parseString(i) {
+    i += 1;
+    let out = '';
+    while (i < text.length) {
+      if (text[i] === '\\') {
+        out += text[i + 1] ?? '';
+        i += 2;
         continue;
       }
+      if (text[i] === '"') return { i: i + 1, out };
+      out += text[i];
+      i += 1;
     }
-    i = skipJsonString(text, i);
+    return { i, out };
   }
-  return found;
+  function skipNumber(i) {
+    const token = readPlainDecimal(text, i);
+    if (token && token !== 'exponent') return { i: i + token.length, token };
+    let j = i;
+    if (text[j] === '-') j += 1;
+    while (isDigit(text[j])) j += 1;
+    if (text[j] === '.') {
+      j += 1;
+      while (isDigit(text[j])) j += 1;
+    }
+    if (text[j] === 'e' || text[j] === 'E') {
+      j += 1;
+      if (text[j] === '+' || text[j] === '-') j += 1;
+      while (isDigit(text[j])) j += 1;
+      return { i: j, token: 'exponent' };
+    }
+    return { i, token: null };
+  }
+  function walkValue(i) {
+    i = skipWs(i);
+    if (text[i] === '"') return parseString(i).i;
+    if (text[i] === '{') return walkObject(i);
+    if (text[i] === '[') return walkArray(i);
+    if (text.startsWith('true', i)) return i + 4;
+    if (text.startsWith('false', i)) return i + 5;
+    if (text.startsWith('null', i)) return i + 4;
+    if (text[i] === '-' || isDigit(text[i])) return skipNumber(i).i;
+    return i + 1;
+  }
+  function walkObject(i) {
+    i = skipWs(i + 1);
+    if (text[i] === '}') return i + 1;
+    while (i < text.length) {
+      i = skipWs(i);
+      if (text[i] !== '"') return i;
+      const key = parseString(i);
+      i = skipWs(key.i);
+      if (text[i] !== ':') return i;
+      i = skipWs(i + 1);
+      if (key.out === field && (text[i] === '-' || isDigit(text[i]))) {
+        const num = skipNumber(i);
+        if (num.token) sink.take(num.token);
+        i = num.token ? num.i : walkValue(i);
+      } else {
+        i = walkValue(i);
+      }
+      i = skipWs(i);
+      if (text[i] === ':') {
+        i = skipWs(i + 1);
+        if (text[i] === '-' || isDigit(text[i])) i = skipNumber(i).i;
+        i = skipWs(i);
+      }
+      if (text[i] === ',') {
+        i += 1;
+        continue;
+      }
+      if (text[i] === '}') return i + 1;
+      return i;
+    }
+    return i;
+  }
+  function walkArray(i) {
+    i = skipWs(i + 1);
+    if (text[i] === ']') return i + 1;
+    while (i < text.length) {
+      i = walkValue(i);
+      i = skipWs(i);
+      if (text[i] === ',') {
+        i += 1;
+        continue;
+      }
+      if (text[i] === ']') return i + 1;
+      return i;
+    }
+    return i;
+  }
+  const start = skipWs(index);
+  if (text[start] === '{') walkObject(start);
+  else if (text[start] === '[') walkArray(start);
 }
 
 function readPlainDecimal(text, i) {
@@ -147,19 +237,6 @@ function readPlainDecimal(text, i) {
   }
   if (text[i] === 'e' || text[i] === 'E') return 'exponent';
   return text.slice(start, i);
-}
-
-function skipJsonString(text, i) {
-  i += 1;
-  while (i < text.length) {
-    if (text[i] === '\\') {
-      i += 2;
-      continue;
-    }
-    if (text[i] === '"') return i + 1;
-    i += 1;
-  }
-  return text.length;
 }
 
 export function decideCashfreeEvent(input) {
@@ -249,22 +326,24 @@ export function decideCashfreeEvent(input) {
   const warnings = [];
   if (success && already) {
     const amountCheck = comparePaymentAmount(input);
-    if (amountCheck === 'mismatch') {
+    const amountError = amountFailure(amountCheck);
+    if (amountError) {
       action = 'amount_mismatch';
       valid = false;
       next = prior;
-      errors.push('paymentAmount does not match expectedAmount. Do not ship.');
+      errors.push(amountError);
     } else {
       action = 'already_fulfilled';
       warnings.push('payment is already SUCCESS; do not ship again');
     }
   } else if (success) {
     const amountCheck = comparePaymentAmount(input);
-    if (amountCheck === 'mismatch') {
+    const amountError = amountFailure(amountCheck);
+    if (amountError) {
       action = 'amount_mismatch';
       valid = false;
       next = prior;
-      errors.push('paymentAmount does not match expectedAmount. Do not ship.');
+      errors.push(amountError);
     } else {
       action = 'fulfil';
       fulfil = true;
@@ -296,9 +375,16 @@ export function decideCashfreeEvent(input) {
   });
 }
 
+function amountFailure(amountCheck) {
+  if (amountCheck === 'mismatch') return 'paymentAmount does not match expectedAmount. Do not ship.';
+  if (amountCheck === 'ambiguous') return 'paymentAmount is ambiguous. Do not ship.';
+  return null;
+}
+
 function comparePaymentAmount(input) {
   const payment = input.paymentAmount;
   const expected = input.expectedAmount;
+  if (payment === null || expected === null) return 'ambiguous';
   if (payment === undefined && expected === undefined) return 'missing';
   if (payment === undefined || expected === undefined) {
     throw new UsageError('Pass both paymentAmount and expectedAmount, or neither. Use decimal strings.');
