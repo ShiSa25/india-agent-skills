@@ -12,7 +12,7 @@ import { fyOf, parseIsoDate } from './_lib/fy.mjs';
 import { validateGstin } from './_lib/gstin.mjs';
 import { formatMinor, parseAmount, pct } from './_lib/money.mjs';
 import { compileAnchored, loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
-import { asciiLower, foldDocumented, hasFoldedLookalike } from './_lib/textprep.mjs';
+import { FULLWIDTH_DIGIT_WARNING, asciiLower, foldDocumented, hasFoldedLookalike } from './_lib/textprep.mjs';
 import { toWords } from './words.mjs';
 
 const LIMIT = 10 * 1024;
@@ -151,8 +151,9 @@ function assemble(input) {
   const invoiceNumber = readText(input.invoiceNumber, 'invoiceNumber', errors, { max: 64 });
   if (typeof input.invoiceNumber === 'string') {
     const foldedNumber = foldDocumented(input.invoiceNumber.trim());
-    if (foldedNumber.fullwidthDigits || foldedNumber.compatibilitySeparators) {
-      warnings.push('Invoice number was NFKC-normalised.');
+    if (foldedNumber.fullwidthDigits) warnings.push(`Invoice number: ${FULLWIDTH_DIGIT_WARNING}`);
+    if (foldedNumber.compatibilitySeparators) {
+      warnings.push('Invoice number: a separator-only compatibility character was folded to an ASCII space or hyphen.');
     }
   }
   checkNumber(invoiceNumber, pack, input.priorNumbers, errors, warnings, () => noteConfirm());
@@ -814,7 +815,10 @@ function readDate(value, label, errors, warnings) {
     return null;
   }
   const folded = foldDocumented(value.trim());
-  if (folded.fullwidthDigits || folded.compatibilitySeparators) warnings.push(`${label} was NFKC-normalised.`);
+  if (folded.fullwidthDigits) warnings.push(`${label}: ${FULLWIDTH_DIGIT_WARNING}`);
+  if (folded.compatibilitySeparators) {
+    warnings.push(`${label}: a separator-only compatibility character was folded to an ASCII space or hyphen.`);
+  }
   try {
     parseIsoDate(folded.text);
     return folded.text;
@@ -850,7 +854,10 @@ function readMinor(value, label, errors, warnings) {
     return null;
   }
   const folded = foldDocumented(value.trim());
-  if (folded.fullwidthDigits || folded.compatibilitySeparators) warnings.push(`${label} was NFKC-normalised.`);
+  if (folded.fullwidthDigits) warnings.push(`${label}: ${FULLWIDTH_DIGIT_WARNING}`);
+  if (folded.compatibilitySeparators) {
+    warnings.push(`${label}: a separator-only compatibility character was folded to an ASCII space or hyphen.`);
+  }
   try {
     return parseAmount(folded.text);
   } catch (error) {

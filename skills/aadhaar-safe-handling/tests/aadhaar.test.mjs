@@ -51,7 +51,8 @@ describe('check and mask', () => {
     const wide = checkAadhaar(fullwidth);
     assert.equal(wide.valid, true);
     assert.equal(wide.masked, 'XXXX XXXX 2346');
-    assert.ok(wide.warnings.includes('Input was NFKC-normalised.'));
+    assert.ok(wide.warnings.includes('Fullwidth digits were mapped to ASCII.'));
+    assert.equal(wide.warnings.includes('Input was NFKC-normalised.'), false);
     const circled = [...SPECIMEN].map((digit) => String.fromCodePoint(0x245f + Number(digit))).join('');
     const fancy = checkAadhaar(circled);
     assert.equal(fancy.valid, false);

@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 import { CONFIRM_SENTENCE, disclaimer } from './_lib/disclaimer.mjs';
 import { formatMinor, parseAmount } from './_lib/money.mjs';
 import { compileAnchored, loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
-import { asciiLower, asciiUpper, foldDocumented } from './_lib/textprep.mjs';
+import { FULLWIDTH_DIGIT_WARNING, asciiLower, asciiUpper, foldDocumented } from './_lib/textprep.mjs';
 import { qrcodegen } from './_lib/vendor/qrcodegen.mjs';
 
 const CONTROLS = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/u;
@@ -155,7 +155,7 @@ function assemble(input, { fromParse, parseNotes }) {
   }
   if (input.dynamic !== undefined && typeof input.dynamic !== 'boolean') errors.push('dynamic must be a boolean.');
 
-  const notes = { nfkc: false };
+  const notes = { fullwidthDigits: false, compatibilitySeparators: false };
   const raw = {};
   for (const key of order.value) {
     if (input[key] === undefined || input[key] === null) continue;
@@ -166,7 +166,10 @@ function assemble(input, { fromParse, parseNotes }) {
     const cleaned = cleanField(key, input[key], notes, errors);
     if (cleaned !== null) raw[key] = cleaned;
   }
-  if (notes.nfkc) warnings.push('Input was NFKC-normalised.');
+  if (notes.fullwidthDigits) warnings.push(FULLWIDTH_DIGIT_WARNING);
+  if (notes.compatibilitySeparators) {
+    warnings.push('A separator-only compatibility character was folded to an ASCII space or hyphen.');
+  }
   if (parseNotes?.warnings) warnings.push(...parseNotes.warnings);
 
   for (const key of required.value) {
@@ -333,7 +336,10 @@ function extractLink(link) {
   if (CONTROLS.test(link)) return { errors: ['Zero-width, bidi, or control characters are not allowed.'], warnings, params: {} };
   const folded = foldDocumented(link.trim());
   const nfkc = folded.text;
-  if (folded.fullwidthDigits || folded.compatibilitySeparators) warnings.push('Input was NFKC-normalised.');
+  if (folded.fullwidthDigits) warnings.push(FULLWIDTH_DIGIT_WARNING);
+  if (folded.compatibilitySeparators) {
+    warnings.push('A separator-only compatibility character was folded to an ASCII space or hyphen.');
+  }
   if (/\s/u.test(nfkc)) return { errors: ['The link contains whitespace.'], warnings, params: {} };
   const match = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/([^/?#]+)(?:\?(.*))?$/.exec(nfkc);
   const scheme = match ? asciiLower(match[1]).text : '';
@@ -483,7 +489,8 @@ function cleanField(key, value, notes, errors) {
   }
   const folded = foldDocumented(value);
   const nfkc = folded.text;
-  if (folded.fullwidthDigits || folded.compatibilitySeparators) notes.nfkc = true;
+  if (folded.fullwidthDigits) notes.fullwidthDigits = true;
+  if (folded.compatibilitySeparators) notes.compatibilitySeparators = true;
   if (CONTROLS.test(value) || CONTROLS.test(nfkc)) {
     errors.push(`${key} contains a zero-width, bidi, or control character.`);
     return null;

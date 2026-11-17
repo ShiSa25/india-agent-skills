@@ -166,8 +166,9 @@ describe('Rule 46 invoice', () => {
     assert.equal(result.invoice.invoiceDate, '2026-04-15');
     assert.equal(result.invoice.fy, '2026-27');
     assert.equal(result.invoice.lines[0].taxable, '42000.00');
-    assert.ok(result.warnings.some((warning) => warning.includes('invoiceDate was NFKC-normalised')));
-    assert.ok(result.warnings.some((warning) => warning.includes('taxable was NFKC-normalised')));
+    assert.ok(result.warnings.some((warning) => warning.includes('invoiceDate: Fullwidth digits were mapped to ASCII.')));
+    assert.ok(result.warnings.some((warning) => warning.includes('taxable: Fullwidth digits were mapped to ASCII.')));
+    assert.equal(result.warnings.some((warning) => warning.includes('NFKC-normalised')), false);
   });
 
   test('a superscript quantity and a fullwidth invoice letter are rejected', () => {
