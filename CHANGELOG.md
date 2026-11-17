@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-No package version bump and no tag. Metadata stays 0.1.2. The notes below cover what landed in #22–#27 and the fail-closed follow-up. Callers that depended on the old acceptance rules need to change.
+## [0.2.0] - 2026-11-17
+
+The same 13 skills are at metadata version 0.2.0. The notes below cover what landed in #22–#27 and the fail-closed follow-up. Callers that depended on the old acceptance rules need to change.
 
 - **Unicode (`lib/textprep.mjs`).** Only ASCII `a-z` is uppercased. Fullwidth digits U+FF10–U+FF19 map to ASCII and warn. Compatibility and case-fold look-alikes are rejected (long s, Kelvin sign, ligatures, Roman numerals, fullwidth Latin, dotless i, sharp s, capital sharp s, superscript and circled digits, Cyrillic). The whole string is not NFKC-normalised. Aadhaar and PII scanners may still fold those characters so a look-alike is caught. This applies to GSTIN, PAN, TAN, IFSC, invoice fields, amounts, DLT headers, and currency codes.
 - **`sms-otp-dlt`.** A promotional opt-out is checked even when `sentAtIst` is missing. A missing or unparseable time skips only the 10:00–21:00 window. `9:30` is not `09:30`. Opt-out words and URL hosts use ASCII case only. A Kelvin sign does not count as `block`. A URL that matches the whitelist only after NFKC is not whitelisted. A missing callback whitelist entry stays a warning. From 1 Oct 2024 a non-whitelisted URL (`http://`, `https://`, or `www.`) is an error. The linter does not flag a bare APK or OTT name.
