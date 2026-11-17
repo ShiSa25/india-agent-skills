@@ -256,12 +256,38 @@ export function decideRazorpayEvent(input) {
   const captured = BigInt(base.capturedMinor);
   const refunded = BigInt(base.refundedMinor);
   if (fulfilRule.value.includes(eventName.value)) {
+    if (signedZeroMinor(input.amountMinor) || signedZeroMinor(input.expectedMinor)) {
+      return decision(domain, rules, {
+        ...base,
+        valid: false,
+        httpStatus: 200,
+        action: 'amount_mismatch',
+        fulfil: false,
+        duplicate: false,
+        storeEventId: true,
+        errors: ['A signed zero amount is invalid. Do not ship.'],
+        warnings: [],
+      });
+    }
     const amount = optionalMinor(input.amountMinor, 'amountMinor');
     const nextCaptured = amount === null ? captured : amount;
     const already = state === 'captured' || state === 'refunded';
     if (!already) {
       const expected = optionalMinor(input.expectedMinor, 'expectedMinor');
-      if (expected !== null && expected !== nextCaptured) {
+      if (amount === null || expected === null) {
+        return decision(domain, rules, {
+          ...base,
+          valid: false,
+          httpStatus: 200,
+          action: 'needs_amount',
+          fulfil: false,
+          duplicate: false,
+          storeEventId: true,
+          errors: ['expectedMinor is required before payment.captured or order.paid can fulfil. Do not ship. Omitting amountMinor must not be stored as capturedMinor 0.'],
+          warnings: [],
+        });
+      }
+      if (expected !== nextCaptured) {
         return decision(domain, rules, {
           ...base,
           valid: false,
@@ -274,10 +300,6 @@ export function decideRazorpayEvent(input) {
           warnings: [],
         });
       }
-      const warnings = [];
-      if (expected === null) {
-        warnings.push('expectedMinor was not passed. Compare the captured amount with the order amount stored on your server before shipping.');
-      }
       return decision(domain, rules, {
         ...base,
         valid: true,
@@ -289,7 +311,7 @@ export function decideRazorpayEvent(input) {
         state: 'captured',
         capturedMinor: nextCaptured.toString(),
         errors: [],
-        warnings,
+        warnings: [],
       });
     }
     const expected = optionalMinor(input.expectedMinor, 'expectedMinor');
@@ -532,6 +554,10 @@ function readSeen(value) {
     seen.add(item);
   }
   return seen;
+}
+
+function signedZeroMinor(value) {
+  return typeof value === 'string' && /^-0+$/.test(value.trim());
 }
 
 function optionalMinor(value, label) {

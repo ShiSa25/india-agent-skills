@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `cashfree-integration`: an amount with more than 2 decimal places, a signed zero, a missing `paymentAmount` or `expectedAmount`, or a top-level JSON array does not fulfil. The Next.js sample calls `jsonDecimalToken` and `decideCashfreeEvent` before success.
+- `razorpay-integration`: `payment.captured` and `order.paid` do not fulfil when `expectedMinor` or `amountMinor` is omitted, and they do not record that omission as a capture of 0. A signed zero does not fulfil.
+- `freelancer-export-compliance`: omitting `forexReceived` fails IGST s.2(6)(iv) and the LUT limb.
+- `gst-invoice`: deemed-export tax is left as a SPEC gap. No new deemed-export rule was added.
+
 ## 0.1.2 — 2026-11-10
 
 Patch on the 0.1.1 pack. No rule values changed. The same 13 skills are at metadata version 0.1.2.

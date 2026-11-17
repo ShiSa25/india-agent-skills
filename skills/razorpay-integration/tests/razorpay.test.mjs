@@ -233,10 +233,21 @@ describe('events', () => {
     assert.equal(authorized.httpStatus, 200);
     assert.match(authorized.warnings[0], /12/);
     assert.match(authorized.warnings[0], /4320/);
-    const captured = decideRazorpayEvent({ ...base, event: 'payment.captured', amountMinor: '50000' });
+    const captured = decideRazorpayEvent({
+      ...base,
+      event: 'payment.captured',
+      amountMinor: '50000',
+      expectedMinor: '50000',
+    });
     assert.equal(captured.fulfil, true);
     assert.equal(captured.capturedMinor, '50000');
-    const paid = decideRazorpayEvent({ ...base, event: 'order.paid', state: 'authorized' });
+    const paid = decideRazorpayEvent({
+      ...base,
+      event: 'order.paid',
+      state: 'authorized',
+      amountMinor: '50000',
+      expectedMinor: '50000',
+    });
     assert.equal(paid.fulfil, true);
     assert.equal(decideRazorpayEvent({ ...base, event: 'payment.captured', state: 'captured' }).fulfil, false);
     const repeat = decideRazorpayEvent({
@@ -298,7 +309,13 @@ describe('events', () => {
   });
 
   test('out-of-order capture, failure, and late authorize', () => {
-    const capturedFirst = decideRazorpayEvent({ ...base, event: 'payment.captured', state: 'none' });
+    const capturedFirst = decideRazorpayEvent({
+      ...base,
+      event: 'payment.captured',
+      state: 'none',
+      amountMinor: '50000',
+      expectedMinor: '50000',
+    });
     assert.equal(capturedFirst.fulfil, true);
     const lateAuth = decideRazorpayEvent({
       ...base,
@@ -308,7 +325,14 @@ describe('events', () => {
     });
     assert.equal(lateAuth.fulfil, false);
     assert.equal(lateAuth.state, 'captured');
-    const retry = decideRazorpayEvent({ ...base, eventId: 'evt_3', event: 'payment.captured', state: 'failed' });
+    const retry = decideRazorpayEvent({
+      ...base,
+      eventId: 'evt_3',
+      event: 'payment.captured',
+      state: 'failed',
+      amountMinor: '50000',
+      expectedMinor: '50000',
+    });
     assert.equal(retry.fulfil, true);
     const lateFail = decideRazorpayEvent({
       ...base,
@@ -383,6 +407,49 @@ describe('events', () => {
     const created = decideRazorpayEvent({ ...base, eventId: 'evt_rc', event: 'refund.created', state: 'captured' });
     assert.equal(created.action, 'refund_pending');
     assert.equal(created.refundedMinor, '0');
+  });
+
+  test('omitting expectedMinor does not fulfil or record a zero capture', () => {
+    const captured = decideRazorpayEvent({ ...base, event: 'payment.captured', amountMinor: '50000' });
+    assert.equal(captured.action, 'needs_amount');
+    assert.equal(captured.fulfil, false);
+    assert.equal(captured.valid, false);
+    assert.equal(captured.state, 'none');
+    assert.equal(captured.capturedMinor, '0');
+    assert.match(captured.errors[0], /expectedMinor/);
+    const paid = decideRazorpayEvent({
+      ...base,
+      eventId: 'evt_paid_omit',
+      event: 'order.paid',
+      state: 'authorized',
+    });
+    assert.equal(paid.action, 'needs_amount');
+    assert.equal(paid.fulfil, false);
+    assert.equal(paid.state, 'authorized');
+    assert.equal(paid.capturedMinor, '0');
+    assert.match(paid.errors[0], /capturedMinor 0|amountMinor/);
+  });
+
+  test('signed zero does not fulfil', () => {
+    const row = decideRazorpayEvent({
+      ...base,
+      event: 'payment.captured',
+      amountMinor: '-0',
+      expectedMinor: '0',
+    });
+    assert.equal(row.action, 'amount_mismatch');
+    assert.equal(row.fulfil, false);
+    assert.equal(row.valid, false);
+    assert.notEqual(row.state, 'captured');
+    const both = decideRazorpayEvent({
+      ...base,
+      eventId: 'evt_neg_both',
+      event: 'order.paid',
+      amountMinor: '-0',
+      expectedMinor: '-0',
+    });
+    assert.equal(both.fulfil, false);
+    assert.equal(both.action, 'amount_mismatch');
   });
 
   test('a JSON number of subunits is a usage error', () => {

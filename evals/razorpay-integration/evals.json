@@ -68,19 +68,38 @@
     },
     {
       "id": "captured-fulfil",
-      "prompt": "payment.captured arrived for evt_cap and the amount is 50000 subunits. Do I fulfil?",
+      "prompt": "payment.captured arrived for evt_cap. The payload amount and the order I stored are both 50000 subunits. Do I fulfil?",
       "expect": {
         "op": "event",
         "input": {
           "signatureVerified": true,
           "eventId": "evt_cap",
           "event": "payment.captured",
-          "amountMinor": "50000"
+          "amountMinor": "50000",
+          "expectedMinor": "50000"
         },
         "valid": true,
         "fulfil": true,
         "action": "fulfil",
         "capturedMinor": "50000"
+      }
+    },
+    {
+      "id": "captured-without-expected-does-not-fulfil",
+      "prompt": "payment.captured arrived for 50000 subunits but I did not pass the stored order amount. Do I fulfil?",
+      "expect": {
+        "op": "event",
+        "input": {
+          "signatureVerified": true,
+          "eventId": "evt_cap_omit",
+          "event": "payment.captured",
+          "amountMinor": "50000"
+        },
+        "valid": false,
+        "fulfil": false,
+        "action": "needs_amount",
+        "state": "none",
+        "capturedMinor": "0"
       }
     },
     {

@@ -62,6 +62,9 @@ export function taxSplit(input) {
   if (lut && supplyType !== 'sez' && supplyType !== 'export') {
     throw new TypeError('lut applies only to an export or an SEZ supply');
   }
+  // TODO: SPEC §1.2 does not define a deemed-export tax split (CGST/SGST, IGST,
+  // or LUT). Do not invent one. supplyType 'deemed-export' is not zero-rated
+  // and is not forced onto IGST by this function.
   const zeroRated = (supplyType === 'export' || supplyType === 'sez') && lut;
   const forcedIgst = supplyType === 'export' || supplyType === 'sez';
   const sameState = supplier.code === place.code;
