@@ -12,6 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { CONFIRM_SENTENCE, disclaimer } from './_lib/disclaimer.mjs';
 import { formatMinor, parseAmount } from './_lib/money.mjs';
 import { loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
+import { foldDocumented } from './_lib/textprep.mjs';
 
 const CONTROLS = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/u;
 const MAX_BYTES = 10240;
@@ -215,10 +216,12 @@ function coerceMinor(input, ctx) {
 
 function sanitizeAmount(input) {
   if (Buffer.byteLength(input, 'utf8') > MAX_BYTES) throw new Error('Input is longer than 10 KB.');
-  const normalised = input.normalize('NFKC').trim();
-  if (CONTROLS.test(normalised)) throw new Error('Zero-width, bidi, or control characters are not allowed.');
+  if (CONTROLS.test(input)) throw new Error('Zero-width, bidi, or control characters are not allowed.');
+  const folded = foldDocumented(input.trim());
+  if (CONTROLS.test(folded.text)) throw new Error('Zero-width, bidi, or control characters are not allowed.');
   // The sign may come before the rupee sign, which is how formatINR writes a negative: -₹1,234.00.
-  return normalised.replaceAll(',', '').replaceAll(' ', '').replaceAll('_', '').replace(/^(-?)₹/, '$1');
+  // Fullwidth digits are mapped. Superscript and circled digits are left in place so parseAmount rejects them.
+  return folded.text.replaceAll(',', '').replaceAll(' ', '').replaceAll('_', '').replace(/^(-?)₹/, '$1');
 }
 
 function formatGrouped(rupees, paise, ctx, flags) {

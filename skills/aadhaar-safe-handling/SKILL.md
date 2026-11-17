@@ -68,7 +68,7 @@ Rules data is `scripts/_rules/ids.json`, as of 2026-11-01. The checksum is `verh
 
 ## Edge cases
 
-- `2341 2341 2346` and `2341-2341-2346` normalise and pass. `123456789010` passes and warns on the leading 1. `999999999999` passes and does not warn.
+- `2341 2341 2346` and `2341-2341-2346` normalise and pass. `123456789010` passes and warns on the leading 1. `999999999999` passes and does not warn. The checker maps fullwidth digits U+FF10–U+FF19. It rejects superscript and circled digits. The scanner still folds those, and other Unicode decimal digits, so a look-alike number is masked.
 - Flipping any digit of `234123412346` fails the Verhoeff check. The failure JSON is still masked.
 - The scanner ignores a 12-digit run that fails Verhoeff, such as `123456789012`. It ignores a `YYYYMMDDHHmm` timestamp even when that timestamp happens to pass Verhoeff. It ignores a digit run glued to letters (`id234123412346`). It joins digits across a zero-width character. It also joins groups split by a dot, a comma, a non-breaking space, or a dash, and it maps Unicode decimal digits (for example Devanagari) to ASCII before the check.
 - An unlabelled 16-digit run is not reported, so a card number is not called an Aadhaar. A line that says VID or virtual ID is masked whether the 16 digits are contiguous or grouped. Scan text over 2 MB is a usage error. A path scan skips `.git` and `node_modules`, and the reported path is masked if the file name itself contains a number.

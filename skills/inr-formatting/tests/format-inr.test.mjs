@@ -105,6 +105,15 @@ describe('grouping, words, and input cleaning', () => {
     assert.equal(below.warnings.some((warning) => warning.includes('Arab')), false);
   });
 
+  test('superscript and circled digits are not folded into the amount', () => {
+    const superscript = reportInr('1\u00B2.00');
+    assert.equal(superscript.valid, false);
+    assert.notEqual(superscript.paise, '1200');
+    const circled = reportInr('\u2460.50');
+    assert.equal(circled.valid, false);
+    assert.notEqual(circled.paise, '150');
+  });
+
   test('commas, the rupee sign, and fullwidth digits', () => {
     assert.equal(formatINR('1,23,456.78'), '₹1,23,456.78');
     assert.equal(formatINR('₹1,234.50'), '₹1,234.50');

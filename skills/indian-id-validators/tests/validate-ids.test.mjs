@@ -82,6 +82,29 @@ describe('PAN', () => {
     assert.equal(validatePan('ABCPE1234').valid, false);
   });
 
+  test('compatibility characters that fold into ASCII letters are look-alikes', () => {
+    const cases = [
+      ['A\u017FCPE1234F', 'long s'],
+      ['\u212ABCPE1234F', 'Kelvin sign'],
+      ['\uFF21BCPE1234F', 'fullwidth A'],
+      ['A\uFB00PE1234F', 'ligature ff'],
+      ['\u2160BCPE1234F', 'Roman numeral'],
+    ];
+    for (const [pan, label] of cases) {
+      const result = validatePan(pan);
+      assert.equal(result.valid, false, label);
+      assert.equal(result.normalized, '', label);
+      assert.ok(result.errors.some((error) => error.includes('look-alikes')), label);
+    }
+    const tan = validateTan('\uFB00EL12345B');
+    assert.equal(tan.valid, false);
+    assert.equal(tan.normalized, '');
+    const ifsc = validateIfsc('\u017FBIN0001234');
+    assert.equal(ifsc.valid, false);
+    assert.equal(ifsc.normalized, '');
+    assert.ok(ifsc.errors.some((error) => error.includes('look-alikes')));
+  });
+
   test('a letter whose uppercase form is ASCII is still a look-alike', () => {
     const dotless = validatePan('A\u0131CPE1234F');
     assert.equal(dotless.valid, false);

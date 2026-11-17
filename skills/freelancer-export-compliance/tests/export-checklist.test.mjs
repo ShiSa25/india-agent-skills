@@ -28,6 +28,17 @@ function invoice(overrides = {}) {
 }
 
 describe('SPEC dates, with the RBI periods that were opened', () => {
+  test('superscript dates and Roman-numeral codes are not folded', () => {
+    assert.throws(() => invoice({ invoiceDate: '2026-04-0\u00B2' }), /invoiceDate/);
+    assert.throws(() => invoice({ currency: '\u2160NR' }), /currency/);
+    assert.throws(() => invoice({ clientCountry: '\u0131ndia' }), /look-alike/);
+    const wide = invoice({ invoiceDate: '\uFF12\uFF10\uFF12\uFF16-\uFF10\uFF14-\uFF10\uFF11' });
+    assert.equal(wide.fy, '2026-27');
+    const india = invoice({ clientCountry: 'india' });
+    assert.equal(india.isExport, false);
+    assert.ok(india.warnings.some((warning) => warning.includes('India')));
+  });
+
   test('15 Mar 2026 is FY 2025-26, one year later, and 15 FEMA months', () => {
     const result = invoice({ invoiceDate: '2026-03-15', lutFiledFY: '2025-26' });
     assert.equal(result.valid, true);

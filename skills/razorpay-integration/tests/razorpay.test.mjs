@@ -64,6 +64,15 @@ describe('checkout signature', () => {
     assert.equal(result.errors[0], 'signature mismatch');
   });
 
+  test('a fullwidth hex digit is not normalised into a match', () => {
+    const signature = CHECKOUT_HEX.replace('0', '\uFF10');
+    assert.notEqual(signature, CHECKOUT_HEX);
+    assert.equal(
+      verifyPaymentSignature({ orderId: ORDER, paymentId: PAYMENT, signature, secret: KEY }),
+      false,
+    );
+  });
+
   test('uppercase hex fails and is not normalised', () => {
     assert.equal(
       verifyPaymentSignature({
@@ -156,6 +165,10 @@ describe('subunits', () => {
     assert.equal(below.valid, false);
     assert.match(below.errors[0], /minimum of 100/);
     assert.equal(explainSubunits({ amount: '100', currency: 'inr' }).subunits, '10000');
+    assert.throws(() => toSubunits('1\u00B2.00', 'INR'));
+    const roman = explainSubunits({ amount: '10.00', currency: '\u2160NR' });
+    assert.equal(roman.valid, false);
+    assert.notEqual(roman.subunits, '1000');
   });
 
   test('JPY is zero-decimal and KWD 1.005 is rejected', () => {

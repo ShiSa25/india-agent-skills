@@ -1,4 +1,4 @@
 {
-  "lib": ["disclaimer.mjs", "gstin.mjs", "rules.mjs"],
+  "lib": ["disclaimer.mjs", "gstin.mjs", "rules.mjs", "textprep.mjs"],
   "rules": ["gst.json", "ids.json"]
 }

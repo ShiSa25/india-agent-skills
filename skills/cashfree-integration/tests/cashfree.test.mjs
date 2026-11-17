@@ -232,6 +232,8 @@ describe('version, idempotency, and fulfilment', () => {
     const statuses = ruleById('cashfree', 'cashfree.fulfil.statuses', ON);
     assert.deepEqual(statuses.value, ['SUCCESS']);
     const ok = decideCashfreeEvent({ ...base, paymentStatus: 'SUCCESS' });
+    const kelvin = decideCashfreeEvent({ ...base, paymentStatus: 'SUCCES\u212A' });
+    assert.equal(kelvin.fulfil, false);
     assert.equal(ok.fulfil, true);
     assert.equal(ok.httpStatus, 200);
     assert.equal(ok.storeKey, true);

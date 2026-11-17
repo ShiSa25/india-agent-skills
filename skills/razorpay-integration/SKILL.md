@@ -131,7 +131,7 @@ Sign `req.rawBody`, not `req.body`, after that parser.
 ## Edge cases
 
 - A space or newline in the raw body fails verification even when the JSON value is the same.
-- Uppercase hex fails. The digest is not lowercased before compare.
+- Uppercase hex fails. The digest is not lowercased before compare. A fullwidth digit in the signature is not mapped to ASCII. An amount maps fullwidth digits U+FF10–U+FF19 only; a superscript or circled digit is rejected. A currency code uppercases ASCII letters only.
 - Signature length other than 64 lowercase hex characters returns false and does not throw.
 - `orderId` must not contain `|`. If `clientOrderId` is passed and differs, verification fails.
 - Zero-width and bidi characters in ids are rejected. Ids over 10 KB are rejected. The raw body is not trimmed or normalised, and is refused only above 1 MB (a local cap, not a Razorpay limit).

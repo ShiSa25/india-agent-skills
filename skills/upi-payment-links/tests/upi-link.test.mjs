@@ -17,6 +17,15 @@ const UNSIGNED = 'Unsigned links are for P2P or personal use. Merchants should u
 const BANK = 'Banks and UPI apps may set a lower limit than the published ceiling.';
 
 describe('SPEC vectors', () => {
+  test('a superscript amount and a Roman-numeral currency are rejected', () => {
+    const amount = buildUpiLink({ pa: 'merchant@upi', pn: 'Shop', am: '1\u00B2.00' });
+    assert.equal(amount.valid, false);
+    assert.notEqual(amount.amountPaise, '1200');
+    const currency = buildUpiLink({ pa: 'merchant@upi', pn: 'Shop', am: '10.00', cu: '\u2160NR' });
+    assert.equal(currency.valid, false);
+    assert.ok(currency.errors.some((error) => error.includes('cu must be INR')));
+  });
+
   test('round-trip encodes Shiv & Co with %20 and %26', () => {
     const built = buildUpiLink({ pa: 'merchant@upi', pn: 'Shiv & Co', am: '499.00' });
     assert.equal(built.valid, true);

@@ -397,6 +397,8 @@ describe('rates, thresholds, and who deducts', () => {
     assert.equal(result.tds, '5100.00');
     assert.throws(() => pay({ amountMinor: 1100000 }), /string/);
     assert.throws(() => pay({ amountMinor: '1e5' }), /amountMinor/);
+    assert.throws(() => pay({ amountMinor: '10\u00B2' }), /amountMinor/);
+    assert.throws(() => pay({ amountMinor: '1\u00B2.00' }), /amountMinor/);
     assert.throws(
       () => tds({
         paymentDate: '2026-06-01',
