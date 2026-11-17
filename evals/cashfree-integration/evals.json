@@ -70,19 +70,38 @@
     },
     {
       "id": "success-fulfils",
-      "prompt": "Cashfree webhook version 2025-01-01 says payment_status SUCCESS. The idempotency key is new. Do I fulfil?",
+      "prompt": "Cashfree webhook version 2025-01-01 says payment_status SUCCESS for 170.00, and the order I stored is 170.00. The idempotency key is new. Do I fulfil?",
       "expect": {
         "op": "event",
         "input": {
           "signatureVerified": true,
           "version": "2025-01-01",
           "idempotencyKey": "n9rn7079wqXcse3GEDEXCYle9ajXmU0SUQY8zrUNAlc=",
-          "paymentStatus": "SUCCESS"
+          "paymentStatus": "SUCCESS",
+          "paymentAmount": "170.00",
+          "expectedAmount": "170.00"
         },
         "valid": true,
         "fulfil": true,
         "action": "fulfil",
         "httpStatus": 200
+      }
+    },
+    {
+      "id": "omitted-amount-does-not-fulfil",
+      "prompt": "Cashfree payment_status is SUCCESS but I did not pass the stored order amount. Do I fulfil?",
+      "expect": {
+        "op": "event",
+        "input": {
+          "signatureVerified": true,
+          "version": "2025-01-01",
+          "idempotencyKey": "n9rn7079wqXcse3GEDEXCYle9ajXmU0SUQY8zrUNAlc=",
+          "paymentStatus": "SUCCESS",
+          "paymentAmount": "170.00"
+        },
+        "valid": false,
+        "fulfil": false,
+        "action": "needs_amount"
       }
     },
     {

@@ -113,14 +113,15 @@ export function exportChecklist(input) {
   }
 
   const inr = spec.currency === 'INR';
+  const forexOmitted = spec.forexReceived == null;
   let forexOk = false;
-  if (spec.forexReceived === false) {
+  if (forexOmitted || spec.forexReceived === false) {
     forexOk = false;
   } else if (inr) {
     warnings.push(inrWarning);
     forexOk = spec.inrPermittedByRbi === true;
   } else {
-    forexOk = spec.forexReceived !== false;
+    forexOk = true;
   }
 
   const answers = [spec.supplierInIndia, recipientOutside, placeOutside, forexOk, !spec.ownBranch];
@@ -131,7 +132,9 @@ export function exportChecklist(input) {
       text = `${text} The intermediary rule above treats the place of supply as the supplier's location.`;
     }
     if (i === 3 && inr) text = `${text} ${inrWarning}`;
-    if (i === 3 && spec.forexReceived !== true && !spec.paymentReceivedDate) {
+    if (i === 3 && forexOmitted) {
+      text = `${text} forexReceived is required. Omitting it fails this IGST s.2(6)(iv) limb and does not pass the LUT limb.`;
+    } else if (i === 3 && spec.forexReceived !== true && !spec.paymentReceivedDate) {
       text = `${text} Receipt is still open: s.2(6)(iv) is satisfied only when the payment has actually been received.`;
     }
     if (i === 4 && spec.ownBranch) {
@@ -155,7 +158,15 @@ export function exportChecklist(input) {
   const qualifies = isExport || isSez;
   let lutRequired = false;
   let lutFiled = null;
-  if (qualifies && !spec.withPaymentOfTax) {
+  const forexBlocksLut = forexOmitted;
+  if (forexBlocksLut) {
+    lutRequired = true;
+    items.push({
+      id: 'lut',
+      status: 'fail',
+      text: 'forexReceived is required. Omitting it fails IGST s.2(6)(iv) and does not pass the LUT limb.',
+    });
+  } else if (qualifies && !spec.withPaymentOfTax) {
     if (spec.lutFiledFY) {
       lutFiled = parseFy(spec.lutFiledFY).display;
       lutRequired = lutFiled !== fy;
@@ -234,7 +245,7 @@ export function exportChecklist(input) {
     .map((rule) => `${rule.id}: ${rule.note}`);
   if (confirm && !warnings.includes(CONFIRM_SENTENCE)) warnings.push(CONFIRM_SENTENCE);
 
-  const valid = qualifies && !femaLate && !ruleLate;
+  const valid = qualifies && !femaLate && !ruleLate && !forexBlocksLut;
   return {
     valid,
     qualifies,

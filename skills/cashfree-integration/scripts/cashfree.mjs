@@ -302,8 +302,8 @@ function walkJson(text, field, sink) {
     return i;
   }
   const start = skipWs(0);
+  // A webhook body is one object. A top-level array is rejected, not searched.
   if (text[start] === '{') walkObject(start, 1, true);
-  else if (text[start] === '[') walkArray(start, 1, true);
   else sink.fail();
 }
 
@@ -423,33 +423,26 @@ export function decideCashfreeEvent(input) {
   let next = status.value;
   const errors = [];
   const warnings = [];
-  if (success && already) {
+  if (success) {
     const amountCheck = comparePaymentAmount(input);
     const amountError = amountFailure(amountCheck);
-    if (amountError) {
+    if (amountCheck === 'missing') {
+      action = 'needs_amount';
+      valid = false;
+      next = prior;
+      errors.push(amountError);
+    } else if (amountError) {
       action = 'amount_mismatch';
       valid = false;
       next = prior;
       errors.push(amountError);
-    } else {
+    } else if (already) {
       action = 'already_fulfilled';
       warnings.push('payment is already SUCCESS; do not ship again');
-    }
-  } else if (success) {
-    const amountCheck = comparePaymentAmount(input);
-    const amountError = amountFailure(amountCheck);
-    if (amountError) {
-      action = 'amount_mismatch';
-      valid = false;
-      next = prior;
-      errors.push(amountError);
     } else {
       action = 'fulfil';
       fulfil = true;
       next = 'SUCCESS';
-      if (amountCheck === 'missing') {
-        warnings.push('expectedAmount was not passed. Compare payment_amount from the verified raw body with the order amount stored on your server before shipping.');
-      }
     }
   } else if (already) {
     action = 'ignore_late';
@@ -477,6 +470,9 @@ export function decideCashfreeEvent(input) {
 function amountFailure(amountCheck) {
   if (amountCheck === 'mismatch') return 'paymentAmount does not match expectedAmount. Do not ship.';
   if (amountCheck === 'ambiguous') return 'paymentAmount is ambiguous. Do not ship.';
+  if (amountCheck === 'missing') return 'paymentAmount and expectedAmount are required. Do not ship.';
+  if (amountCheck === 'excess_decimals') return 'payment amount has more than 2 decimal places. Do not ship.';
+  if (amountCheck === 'signed_zero') return 'A signed zero amount is invalid. Do not ship.';
   return null;
 }
 
@@ -484,20 +480,32 @@ function comparePaymentAmount(input) {
   const payment = input.paymentAmount;
   const expected = input.expectedAmount;
   if (payment === null || expected === null) return 'ambiguous';
-  if (payment === undefined && expected === undefined) return 'missing';
-  if (payment === undefined || expected === undefined) {
-    throw new UsageError('Pass both paymentAmount and expectedAmount, or neither. Use decimal strings.');
-  }
-  let left;
-  let right;
+  if (payment === undefined || expected === undefined) return 'missing';
+  let leftText;
+  let rightText;
   try {
-    left = parseAmount(requireDecimal(payment, 'paymentAmount'));
-    right = parseAmount(requireDecimal(expected, 'expectedAmount'));
+    leftText = requireDecimal(payment, 'paymentAmount');
+    rightText = requireDecimal(expected, 'expectedAmount');
   } catch (error) {
     if (error instanceof UsageError) throw error;
     throw new UsageError(error.message);
   }
+  if (isSignedZeroDecimal(leftText) || isSignedZeroDecimal(rightText)) return 'signed_zero';
+  let left;
+  let right;
+  try {
+    left = parseAmount(leftText);
+    right = parseAmount(rightText);
+  } catch (error) {
+    if (error instanceof Error && /^more than \d+ decimal places$/.test(error.message)) return 'excess_decimals';
+    if (error instanceof UsageError) throw error;
+    throw new UsageError(error.message);
+  }
   return left === right ? 'match' : 'mismatch';
+}
+
+function isSignedZeroDecimal(value) {
+  return /^-0+(?:\.0+)?$/.test(value);
 }
 
 function requireDecimal(value, label) {

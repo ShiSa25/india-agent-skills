@@ -264,6 +264,30 @@ describe('five export conditions, intermediary, branch, SEZ', () => {
     assert.ok(sez.items.some((item) => item.id === 'sez' && item.status === 'pass'));
   });
 
+  test('omitting forexReceived does not pass the IGST or LUT limb', () => {
+    const result = exportChecklist({
+      invoiceDate: '2026-03-15',
+      currency: 'USD',
+      clientCountry: 'US',
+      supplierInIndia: true,
+      recipientOutsideIndia: true,
+      placeOfSupplyOutsideIndia: true,
+      ownBranch: false,
+      intermediary: false,
+      lutFiledFY: '2025-26',
+      paymentReceivedDate: '2026-04-01',
+    });
+    const limb = result.items.find((item) => item.id === 's2-6-iv');
+    assert.equal(limb.status, 'fail');
+    assert.match(limb.text, /forexReceived/);
+    assert.match(limb.text, /LUT/);
+    assert.equal(result.isExport, false);
+    assert.equal(result.valid, false);
+    const lut = result.items.find((item) => item.id === 'lut');
+    assert.equal(lut.status, 'fail');
+    assert.match(lut.text, /forexReceived/);
+  });
+
   test('a missing LUT does not stop the supply being an export', () => {
     const result = invoice({ invoiceDate: '2026-06-01' });
     assert.equal(result.isExport, true);

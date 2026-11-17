@@ -231,7 +231,12 @@ describe('version, idempotency, and fulfilment', () => {
   test('SUCCESS fulfils and other statuses do not', () => {
     const statuses = ruleById('cashfree', 'cashfree.fulfil.statuses', ON);
     assert.deepEqual(statuses.value, ['SUCCESS']);
-    const ok = decideCashfreeEvent({ ...base, paymentStatus: 'SUCCESS' });
+    const ok = decideCashfreeEvent({
+      ...base,
+      paymentStatus: 'SUCCESS',
+      paymentAmount: '170.00',
+      expectedAmount: '170.00',
+    });
     const kelvin = decideCashfreeEvent({ ...base, paymentStatus: 'SUCCES\u212A' });
     assert.equal(kelvin.fulfil, false);
     assert.equal(ok.fulfil, true);
@@ -254,7 +259,13 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(duplicate.duplicate, true);
     assert.equal(duplicate.fulfil, false);
     assert.equal(duplicate.storeKey, false);
-    const recovered = decideCashfreeEvent({ ...base, paymentStatus: 'SUCCESS', priorStatus: 'FAILED' });
+    const recovered = decideCashfreeEvent({
+      ...base,
+      paymentStatus: 'SUCCESS',
+      priorStatus: 'FAILED',
+      paymentAmount: '170.00',
+      expectedAmount: '170.00',
+    });
     assert.equal(recovered.fulfil, true);
     const late = decideCashfreeEvent({ ...base, paymentStatus: 'FAILED', priorStatus: 'SUCCESS' });
     assert.equal(late.fulfil, false);
@@ -298,7 +309,13 @@ describe('version, idempotency, and fulfilment', () => {
   test('version 2026-01-01 is accepted and 2023-08-01 is not', () => {
     const versions = ruleById('cashfree', 'cashfree.webhook.versions', ON);
     assert.deepEqual(versions.value, ['2025-01-01', '2026-01-01']);
-    assert.equal(decideCashfreeEvent({ ...base, version: '2026-01-01', paymentStatus: 'SUCCESS' }).fulfil, true);
+    assert.equal(decideCashfreeEvent({
+      ...base,
+      version: '2026-01-01',
+      paymentStatus: 'SUCCESS',
+      paymentAmount: '170.00',
+      expectedAmount: '170.00',
+    }).fulfil, true);
     const old = decideCashfreeEvent({ ...base, version: '2023-08-01', paymentStatus: 'SUCCESS' });
     assert.equal(old.valid, false);
     assert.equal(old.action, 'unexpected_version');
@@ -406,6 +423,80 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(JSON.parse('{"payment_amount":170.00}').payment_amount, 170);
   });
 
+  test('more than two decimal places is amount_mismatch and does not throw', () => {
+    for (const paymentAmount of ['170.000', '0.0001']) {
+      let decision;
+      assert.doesNotThrow(() => {
+        decision = decideCashfreeEvent({
+          ...base,
+          idempotencyKey: `decimals-${paymentAmount}`,
+          paymentStatus: 'SUCCESS',
+          paymentAmount,
+          expectedAmount: '170.00',
+        });
+      });
+      assert.equal(decision.action, 'amount_mismatch', paymentAmount);
+      assert.equal(decision.fulfil, false, paymentAmount);
+      assert.equal(decision.valid, false, paymentAmount);
+      assert.ok(decision.errors.length > 0, paymentAmount);
+    }
+  });
+
+  test('omitting the expected or payment amount does not fulfil', () => {
+    const both = decideCashfreeEvent({ ...base, idempotencyKey: 'omit-both', paymentStatus: 'SUCCESS' });
+    assert.equal(both.action, 'needs_amount');
+    assert.equal(both.fulfil, false);
+    assert.equal(both.valid, false);
+    assert.match(both.errors[0], /expectedAmount|paymentAmount/);
+    const expectedOnly = decideCashfreeEvent({
+      ...base,
+      idempotencyKey: 'omit-payment',
+      paymentStatus: 'SUCCESS',
+      expectedAmount: '170.00',
+    });
+    assert.equal(expectedOnly.action, 'needs_amount');
+    assert.equal(expectedOnly.fulfil, false);
+    const paymentOnly = decideCashfreeEvent({
+      ...base,
+      idempotencyKey: 'omit-expected',
+      paymentStatus: 'SUCCESS',
+      paymentAmount: '170.00',
+    });
+    assert.equal(paymentOnly.action, 'needs_amount');
+    assert.equal(paymentOnly.fulfil, false);
+    assert.equal(paymentOnly.priorStatus, 'none');
+  });
+
+  test('signed zero does not fulfil', () => {
+    for (const paymentAmount of ['-0', '-0.00', '-0.0']) {
+      const decision = decideCashfreeEvent({
+        ...base,
+        idempotencyKey: `negzero-${paymentAmount}`,
+        paymentStatus: 'SUCCESS',
+        paymentAmount,
+        expectedAmount: '0.00',
+      });
+      assert.equal(decision.action, 'amount_mismatch', paymentAmount);
+      assert.equal(decision.fulfil, false, paymentAmount);
+      assert.equal(decision.valid, false, paymentAmount);
+    }
+  });
+
+  test('a top-level JSON array is not an amount token and does not fulfil', () => {
+    const raw = '[{"payment_amount":170.00}]';
+    const token = jsonDecimalToken(raw, 'payment_amount');
+    assert.equal(token, null);
+    const decision = decideCashfreeEvent({
+      ...base,
+      idempotencyKey: 'top-level-array',
+      paymentStatus: 'SUCCESS',
+      paymentAmount: token,
+      expectedAmount: '170.00',
+    });
+    assert.equal(decision.fulfil, false);
+    assert.equal(decision.action, 'amount_mismatch');
+  });
+
   test('the replay window cannot be widened and the amount must match', () => {
     assert.throws(
       () => verifyCashfreeWebhook({
@@ -458,6 +549,14 @@ describe('handlers and evals', () => {
     assert.doesNotMatch(text, /result\.reason/);
     assert.doesNotMatch(text, /res\.status\(200\)\.end\(\);\n  const event/);
     assert.doesNotMatch(text, /\.update\(JSON\.stringify/);
+    const tokenAt = next.indexOf('jsonDecimalToken(');
+    const decideAt = next.indexOf('decideCashfreeEvent(');
+    const guardAt = next.indexOf("decision.action === 'amount_mismatch'");
+    const successAt = next.lastIndexOf('status: 200');
+    assert.ok(tokenAt > 0);
+    assert.ok(decideAt > tokenAt);
+    assert.ok(guardAt > decideAt);
+    assert.ok(successAt > guardAt);
   });
 
   test('evals.json expectations match the script', () => {
@@ -520,7 +619,12 @@ describe('CLI', () => {
 
     const decision = run('decide-event.mjs', [
       '--json',
-      JSON.stringify({ ...baseInput(), paymentStatus: 'SUCCESS' }),
+      JSON.stringify({
+        ...baseInput(),
+        paymentStatus: 'SUCCESS',
+        paymentAmount: '170.00',
+        expectedAmount: '170.00',
+      }),
     ]);
     assert.equal(decision.status, 0);
     assert.equal(JSON.parse(decision.stdout).fulfil, true);
