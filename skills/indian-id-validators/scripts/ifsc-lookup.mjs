@@ -5,6 +5,7 @@
  *   node scripts/ifsc-lookup.mjs --lookup --json 'SBIN0001234'
  * The only host is https://ifsc.razorpay.com. Tests pass fetchImpl and do not call it.
  */
+import { asciiUpper } from './_lib/textprep.mjs';
 import { validateIfsc } from './ids.mjs';
 import { CONFIRM_SENTENCE } from './_lib/disclaimer.mjs';
 import { loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
@@ -87,7 +88,7 @@ export async function lookupIfsc(input, options = {}) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return lookupFailed(format, 'IFSC lookup did not return JSON.');
   }
-  if (typeof body.IFSC === 'string' && body.IFSC.trim().toUpperCase() !== format.normalized) {
+  if (typeof body.IFSC === 'string' && asciiUpper(body.IFSC.trim()).text !== format.normalized) {
     return lookupFailed(format, 'IFSC lookup returned a different IFSC.');
   }
   const warnings = format.warnings.slice();

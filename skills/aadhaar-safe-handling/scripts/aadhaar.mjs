@@ -6,6 +6,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 import { CONFIRM_SENTENCE, disclaimer } from './_lib/disclaimer.mjs';
 import { loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
+import { foldDocumented } from './_lib/textprep.mjs';
 import {
   aadhaarCandidates,
   foldAadhaarLine,
@@ -35,11 +36,11 @@ export function checkAadhaar(input, options = {}) {
   if (typeof input !== 'string') return { ...shell, errors: ['Aadhaar input must be a string.'] };
   if (Buffer.byteLength(input, 'utf8') > LIMIT) return { ...shell, errors: ['Input exceeds the 10 KB limit.'] };
   if (containsBlocked(input)) return { ...shell, errors: ['Zero-width or bidi control character rejected.'] };
-  const nfkc = input.normalize('NFKC');
-  if (containsBlocked(nfkc)) return { ...shell, errors: ['Zero-width or bidi control character rejected.'] };
+  const folded = foldDocumented(input.trim());
+  if (containsBlocked(folded.text)) return { ...shell, errors: ['Zero-width or bidi control character rejected.'] };
   const warnings = [];
-  if (nfkc !== input) warnings.push('Input was NFKC-normalised.');
-  if (hasSeparator(nfkc.trim())) warnings.push('Spaces or hyphens were removed.');
+  if (folded.fullwidthDigits) warnings.push('Input was NFKC-normalised.');
+  if (folded.compatibilitySeparators || hasSeparator(folded.text)) warnings.push('Spaces or hyphens were removed.');
   let digits;
   try {
     digits = normalizeDigits(input);

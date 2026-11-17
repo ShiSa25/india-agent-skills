@@ -10,6 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { CONFIRM_SENTENCE, disclaimer } from './_lib/disclaimer.mjs';
 import { addMonths, addYears, compareIso, fyOf, parseFy, parseIsoDate, formatIsoDate } from './_lib/fy.mjs';
 import { loadDomain, needsConfirm, ruleById, rulesOn } from './_lib/rules.mjs';
+import { asciiUpper, foldDocumented, hasFoldedLookalike } from './_lib/textprep.mjs';
 
 const MAX_BYTES = 10 * 1024;
 const HIDDEN = /[\u200B\u200C\u200D\uFEFF\u2060\u180E\u202A-\u202E\u2066-\u2069]/;
@@ -411,14 +412,16 @@ function requireDate(value, name) {
 
 function requireCurrency(value) {
   if (typeof value !== 'string') throw usage('currency must be a 3-letter code.');
-  const cleaned = clean(value).toUpperCase();
-  if (!CURRENCY.test(cleaned)) throw usage('currency must be a 3-letter code.');
+  const cleaned = asciiUpper(clean(value)).text;
+  if (hasFoldedLookalike(cleaned) || !CURRENCY.test(cleaned)) throw usage('currency must be a 3-letter code.');
   return cleaned;
 }
 
 function requireCountry(value) {
   if (typeof value !== 'string') throw usage('clientCountry must be a string.');
-  const cleaned = clean(value).toUpperCase();
+  const folded = clean(value);
+  if (hasFoldedLookalike(folded)) throw usage('clientCountry contains a Unicode look-alike.');
+  const cleaned = asciiUpper(folded).text;
   if (cleaned.length < 2 || cleaned.length > 64) throw usage('clientCountry is empty or too long.');
   return cleaned;
 }
@@ -429,9 +432,10 @@ function requireBool(value, name) {
 }
 
 function clean(value) {
-  const cleaned = value.normalize('NFKC').trim();
-  if (HIDDEN.test(cleaned)) throw usage('input contains a zero-width or bidi control character');
-  return cleaned;
+  if (HIDDEN.test(value)) throw usage('input contains a zero-width or bidi control character');
+  const folded = foldDocumented(value.trim());
+  if (HIDDEN.test(folded.text)) throw usage('input contains a zero-width or bidi control character');
+  return folded.text;
 }
 
 function addDays(iso, days) {

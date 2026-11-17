@@ -13,6 +13,7 @@ import { pathToFileURL } from 'node:url';
 import { CONFIRM_SENTENCE, disclaimer } from './_lib/disclaimer.mjs';
 import { formatMinor, parseAmount } from './_lib/money.mjs';
 import { compileAnchored, loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
+import { asciiLower, asciiUpper, foldDocumented } from './_lib/textprep.mjs';
 import { qrcodegen } from './_lib/vendor/qrcodegen.mjs';
 
 const CONTROLS = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/u;
@@ -178,7 +179,7 @@ function assemble(input, { fromParse, parseNotes }) {
   }
 
   if (raw.cu !== undefined) {
-    const upper = raw.cu.toUpperCase();
+    const upper = asciiUpper(raw.cu).text;
     if (upper !== raw.cu) warnings.push('cu was uppercased.');
     if (upper !== currency.value) errors.push(`cu must be ${currency.value}.`);
     else raw.cu = upper;
@@ -208,7 +209,7 @@ function assemble(input, { fromParse, parseNotes }) {
   }
 
   if (raw.url !== undefined) {
-    const lower = raw.url.toLowerCase();
+    const lower = asciiLower(raw.url).text;
     const ok = schemes.value.some((scheme) => lower.startsWith(`${scheme}://`));
     if (!ok) errors.push('url must start with http:// or https://.');
     if (/\s/u.test(raw.url)) errors.push('url must not contain whitespace.');
@@ -330,11 +331,14 @@ function extractLink(link) {
   const errors = [];
   if (Buffer.byteLength(link, 'utf8') > MAX_BYTES) return { errors: ['Input is longer than 10 KB.'], warnings, params: {} };
   if (CONTROLS.test(link)) return { errors: ['Zero-width, bidi, or control characters are not allowed.'], warnings, params: {} };
-  const nfkc = link.normalize('NFKC').trim();
-  if (nfkc !== link.trim()) warnings.push('Input was NFKC-normalised.');
+  const folded = foldDocumented(link.trim());
+  const nfkc = folded.text;
+  if (folded.fullwidthDigits || folded.compatibilitySeparators) warnings.push('Input was NFKC-normalised.');
   if (/\s/u.test(nfkc)) return { errors: ['The link contains whitespace.'], warnings, params: {} };
   const match = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/([^/?#]+)(?:\?(.*))?$/.exec(nfkc);
-  if (!match || match[1].toLowerCase() !== 'upi' || match[2].toLowerCase() !== 'pay') {
+  const scheme = match ? asciiLower(match[1]).text : '';
+  const host = match ? asciiLower(match[2]).text : '';
+  if (!match || scheme !== 'upi' || host !== 'pay') {
     return { errors: ['Link must be upi://pay.'], warnings, params: {} };
   }
   if (match[1] !== 'upi' || match[2] !== 'pay') warnings.push('Scheme was normalised to upi://pay.');
@@ -358,7 +362,7 @@ function extractLink(link) {
         continue;
       }
       const keyRaw = part.slice(0, eq);
-      const key = keyRaw.toLowerCase();
+      const key = asciiLower(keyRaw).text;
       if (key !== keyRaw && !lowered) {
         warnings.push('Parameter names were lowercased.');
         lowered = true;
@@ -477,9 +481,10 @@ function cleanField(key, value, notes, errors) {
     errors.push(`${key} is longer than 10 KB.`);
     return null;
   }
-  const nfkc = value.normalize('NFKC');
-  if (nfkc !== value) notes.nfkc = true;
-  if (CONTROLS.test(nfkc)) {
+  const folded = foldDocumented(value);
+  const nfkc = folded.text;
+  if (folded.fullwidthDigits || folded.compatibilitySeparators) notes.nfkc = true;
+  if (CONTROLS.test(value) || CONTROLS.test(nfkc)) {
     errors.push(`${key} contains a zero-width, bidi, or control character.`);
     return null;
   }
@@ -488,7 +493,7 @@ function cleanField(key, value, notes, errors) {
     errors.push(`${key} is empty.`);
     return null;
   }
-  if (trimmed.toLowerCase() === 'null') {
+  if (asciiLower(trimmed).text === 'null' || trimmed.normalize('NFKC').toLowerCase() === 'null') {
     errors.push(`${key} must not be the string null. Omit the field instead.`);
     return null;
   }

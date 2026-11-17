@@ -46,6 +46,20 @@ describe('check and mask', () => {
     assert.ok(leading.warnings.some((warning) => warning.includes(CONFIRM_SENTENCE)));
   });
 
+  test('fullwidth digits pass the checker and circled digits do not', () => {
+    const fullwidth = [...SPECIMEN].map((digit) => String.fromCodePoint(0xff10 + Number(digit))).join('');
+    const wide = checkAadhaar(fullwidth);
+    assert.equal(wide.valid, true);
+    assert.equal(wide.masked, 'XXXX XXXX 2346');
+    assert.ok(wide.warnings.includes('Input was NFKC-normalised.'));
+    const circled = [...SPECIMEN].map((digit) => String.fromCodePoint(0x245f + Number(digit))).join('');
+    const fancy = checkAadhaar(circled);
+    assert.equal(fancy.valid, false);
+    const hits = scanText(circled);
+    assert.equal(hits.length, 1);
+    assert.equal(hits[0].masked.includes('2346'), true);
+  });
+
   test('spaces, dashes, and a computed leading 0 stay valid', () => {
     const spaced = maskAadhaar('2341 2341 2346');
     assert.equal(spaced.valid, true);

@@ -4,11 +4,7 @@
  */
 import { CONFIRM_SENTENCE, disclaimer } from './disclaimer.mjs';
 import { compileAnchored, loadDomain, needsConfirm, ruleById } from './rules.mjs';
-
-const LIMIT = 10 * 1024;
-const ZERO_WIDTH = new Set([
-  0x180e, 0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x2060, 0x2061, 0x2062, 0x2063, 0x2064, 0xfeff,
-]);
+import { prepareId } from './textprep.mjs';
 
 const CAVEAT_FALLBACK = 'Checksum valid ≠ registered/active; check services.gst.gov.in/services/searchtp';
 
@@ -31,31 +27,10 @@ const CAVEAT_FALLBACK = 'Checksum valid ≠ registered/active; check services.gs
 export function validateGstin(gstin) {
   const pack = loadPack();
   const shell = emptyResult(pack.disclaimerText);
-  if (typeof gstin !== 'string') {
-    return { ...shell, errors: ['GSTIN must be a string.'] };
-  }
-  if (Buffer.byteLength(gstin, 'utf8') > LIMIT) {
-    return { ...shell, errors: ['Input exceeds the 10 KB limit.'] };
-  }
-  if (containsBlocked(gstin)) {
-    return { ...shell, errors: ['Zero-width or bidi control character rejected.'] };
-  }
-  const nfkc = gstin.normalize('NFKC');
-  if (containsBlocked(nfkc)) {
-    return { ...shell, errors: ['Zero-width or bidi control character rejected.'] };
-  }
-
-  const warnings = [];
-  if (nfkc !== gstin) warnings.push('Input was NFKC-normalised.');
-  const trimmed = nfkc.trim();
-  if (/[a-z]/.test(trimmed)) warnings.push('Lowercase letters were normalised to uppercase.');
-  if (hasSeparator(trimmed)) warnings.push('Spaces or hyphens were removed.');
-
-  let cleaned = '';
-  for (const ch of trimmed) {
-    if (isSeparator(ch)) continue;
-    cleaned += ch.toUpperCase();
-  }
+  const prepared = prepareId(gstin, { uppercase: true, label: 'GSTIN' });
+  if (prepared.error) return { ...shell, errors: [prepared.error] };
+  const warnings = prepared.warnings;
+  const cleaned = prepared.cleaned;
   if (cleaned.length === 0) {
     return { ...shell, warnings, errors: ['GSTIN is empty.'] };
   }
@@ -300,21 +275,3 @@ function emptyResult(disclaimerText) {
   };
 }
 
-function containsBlocked(value) {
-  for (const ch of value) {
-    const cp = ch.codePointAt(0);
-    if (ZERO_WIDTH.has(cp)) return true;
-    if (cp >= 0x202a && cp <= 0x202e) return true;
-    if (cp >= 0x2066 && cp <= 0x2069) return true;
-  }
-  return false;
-}
-
-function isSeparator(ch) {
-  return ch === ' ' || ch === '-' || ch === '\t' || ch === '\n' || ch === '\r' || ch === '\f' || ch === '\v';
-}
-
-function hasSeparator(value) {
-  for (const ch of value) if (isSeparator(ch)) return true;
-  return false;
-}

@@ -186,6 +186,23 @@ describe('edge cases', () => {
     assert.ok(result.errors.some((error) => error.includes('Zero-width')));
   });
 
+  test('compatibility and case-fold letters are rejected', () => {
+    const cases = [
+      ['27AABC\u01311234A1ZB', 'dotless i'],
+      ['27A\u00DFPE1234F1ZW', 'sharp s'],
+      ['27\u212ABCPE1234F1Z1', 'Kelvin sign'],
+      ['27\uFF21ACPE1234F1Z5', 'fullwidth A'],
+      ['27A\u017FCPE1234F1Z5', 'long s'],
+      ['27\u2160BCPE1234F1Z5', 'Roman numeral'],
+    ];
+    for (const [gstin, label] of cases) {
+      const result = validateGstin(gstin);
+      assert.equal(result.valid, false, label);
+      assert.equal(result.normalized, '', label);
+      assert.ok(result.errors.some((error) => error.includes('look-alike')), label);
+    }
+  });
+
   test('NFKC normalises fullwidth digits', () => {
     const result = validateGstin('\uFF12\uFF17AAACR5055K1Z7');
     assert.equal(result.valid, true);

@@ -161,7 +161,19 @@ describe('SPEC vectors', () => {
     assert.equal(optOut(noTime), true);
     assert.match(noTime.warnings.find((item) => item.code === 'promotional-hours').message, /sentAtIst is missing/);
 
-    assert.equal(optOut(lintDlt(good({ ...sale, sentAtIst: '9:30' }))), true);
+    const early = lintDlt(good({ ...sale, sentAtIst: '09:30' }));
+    assert.equal(optOut(early), true);
+    assert.equal(early.warnings.some((item) => item.code === 'promotional-hours' && /restricted/.test(item.message)), true);
+
+    const late = lintDlt(good({ ...sale, sentAtIst: '22:00' }));
+    assert.equal(optOut(late), true);
+    assert.equal(late.warnings.some((item) => item.code === 'promotional-hours' && /restricted/.test(item.message)), true);
+
+    const unparsed = lintDlt(good({ ...sale, sentAtIst: '9:30' }));
+    assert.equal(optOut(unparsed), true);
+    const unparsedHours = unparsed.warnings.find((item) => item.code === 'promotional-hours');
+    assert.match(unparsedHours.message, /HH:MM/);
+    assert.equal(/restricted/.test(unparsedHours.message), false);
 
     const withStop = lintDlt(good({
       ...sale,
@@ -176,6 +188,19 @@ describe('SPEC vectors', () => {
 });
 
 describe('headers, chains, and categories', () => {
+  test('a header look-alike is not uppercased into ASCII', () => {
+    const dotless = lintDlt(good({ header: 'ACMEI\u0131-P', category: 'promotional' }));
+    assert.equal(dotless.valid, false);
+    assert.equal(dotless.header, 'ACMEI\u0131-P');
+    assert.ok(dotless.errors.some((item) => item.code === 'header-charset'));
+    const sharp = lintDlt(good({ header: 'ACME\u00DF-P', category: 'promotional' }));
+    assert.equal(sharp.valid, false);
+    assert.notEqual(sharp.header, 'ACMESS-P');
+    const kelvin = lintDlt(good({ header: 'ACME\u212A-T' }));
+    assert.equal(kelvin.valid, false);
+    assert.equal(kelvin.header.includes('\u212A'), true);
+  });
+
   test('suffix, length, and the 13 April 2025 date', () => {
     const wrong = lintDlt(good({ header: 'ACMEIN-P' }));
     assert.equal(wrong.errors.some((item) => item.code === 'header-suffix'), true);

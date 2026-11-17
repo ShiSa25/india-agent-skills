@@ -12,6 +12,7 @@ import { fyOf, parseIsoDate } from './_lib/fy.mjs';
 import { validateGstin } from './_lib/gstin.mjs';
 import { formatMinor, parseAmount, pct } from './_lib/money.mjs';
 import { compileAnchored, loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
+import { asciiLower, foldDocumented, hasFoldedLookalike } from './_lib/textprep.mjs';
 import { toWords } from './words.mjs';
 
 const LIMIT = 10 * 1024;
@@ -148,8 +149,11 @@ function assemble(input) {
   };
 
   const invoiceNumber = readText(input.invoiceNumber, 'invoiceNumber', errors, { max: 64 });
-  if (typeof input.invoiceNumber === 'string' && input.invoiceNumber.normalize('NFKC').trim() !== input.invoiceNumber.trim()) {
-    warnings.push('Invoice number was NFKC-normalised.');
+  if (typeof input.invoiceNumber === 'string') {
+    const foldedNumber = foldDocumented(input.invoiceNumber.trim());
+    if (foldedNumber.fullwidthDigits || foldedNumber.compatibilitySeparators) {
+      warnings.push('Invoice number was NFKC-normalised.');
+    }
   }
   checkNumber(invoiceNumber, pack, input.priorNumbers, errors, warnings, () => noteConfirm());
 
@@ -379,8 +383,9 @@ function checkNumber(invoiceNumber, pack, priorNumbers, errors, warnings, noteCo
     noteConfirm();
   }
   if (Array.isArray(priorNumbers)) {
-    const seen = priorNumbers.map((item) => (typeof item === 'string' ? item.normalize('NFKC').trim() : ''));
-    if (seen.includes(invoiceNumber)) errors.push('Invoice number is not unique in this financial year.');
+    const seen = priorNumbers.map((item) => (typeof item === 'string' ? item.trim().normalize('NFKC') : ''));
+    const currentKey = invoiceNumber.normalize('NFKC');
+    if (seen.includes(currentKey)) errors.push('Invoice number is not unique in this financial year.');
   }
 }
 
@@ -584,7 +589,8 @@ function readDelivery(input, recipient, supplyType, errors) {
 
 function readCountry(input, supplyType, errors) {
   const raw = input.country ?? input.recipient?.country;
-  const country = typeof raw === 'string' ? raw.normalize('NFKC').trim() : '';
+  const country = readCountryText(raw, errors);
+  if (country === null) return '';
   if (supplyType === 'export') {
     if (!country) errors.push('country of destination is required for an export.');
     else if (isIndia(country)) errors.push('An export destination cannot be India.');
@@ -604,7 +610,7 @@ function readSignature(input, pack, errors) {
     errors.push('signature is required (Rule 46(q)), or set electronicInvoice true for the IT Act proviso.');
     return '';
   }
-  const text = input.signature.normalize('NFKC').trim();
+  const text = foldDocumented(input.signature.trim()).text;
   if (blockedText(input.signature) || blockedText(text)) {
     errors.push('signature contains a zero-width or bidi control character.');
     return '';
@@ -829,7 +835,7 @@ function readText(value, label, errors, { required = true, max = 300 } = {}) {
     errors.push(`${label} contains a zero-width or bidi control character.`);
     return '';
   }
-  const text = value.normalize('NFKC').trim();
+  const text = foldDocumented(value.trim()).text;
   if (required && text.length === 0) errors.push(`${label} is required.`);
   if ([...text].length > max) errors.push(`${label} is longer than ${max} characters.`);
   return text;
@@ -849,8 +855,18 @@ function readMinor(value, label, errors) {
   }
 }
 
+function readCountryText(raw, errors) {
+  if (typeof raw !== 'string') return '';
+  const folded = foldDocumented(raw.trim());
+  if (hasFoldedLookalike(folded.text)) {
+    errors.push('country contains a Unicode look-alike.');
+    return null;
+  }
+  return folded.text;
+}
+
 function isIndia(country) {
-  const value = country.trim().toLowerCase();
+  const value = asciiLower(country.trim()).text;
   return value === 'india' || value === 'in';
 }
 

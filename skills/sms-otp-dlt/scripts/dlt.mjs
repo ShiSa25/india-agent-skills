@@ -5,6 +5,7 @@
 import { disclaimer, CONFIRM_SENTENCE } from './_lib/disclaimer.mjs';
 import { istDate, parseIsoDate } from './_lib/fy.mjs';
 import { loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
+import { asciiUpper } from './_lib/textprep.mjs';
 import { prepareText, usage } from './guard.mjs';
 
 const CATEGORIES = new Map([
@@ -54,9 +55,9 @@ export function lintDlt(input) {
   const category = normaliseCategory(input.category);
   if (!category) errors.push(issue('category', 'category must be transactional, service-implicit, service-explicit, promotional, or government.', 'skill'));
 
-  const headerPrep = prepareText(input.header, 'header');
+  const headerPrep = prepareText(input.header, 'header', 'raw');
   if (!headerPrep.ok) errors.push(issue('header', headerPrep.error, 'skill'));
-  const header = headerPrep.ok ? headerPrep.text.toUpperCase() : '';
+  const header = headerPrep.ok ? asciiUpper(headerPrep.text).text : '';
   const template = templatePrep.ok ? templatePrep.text : '';
   const message = messagePrep && messagePrep.ok ? messagePrep.text : '';
 
@@ -184,6 +185,12 @@ function checkBrand(template, brandName, brandRule, errors) {
 function checkLinks(text, whitelist, callbackWhitelist, asOf, urlRule, callbackRule, errors, warnings) {
   const allowed = new Set(asStrings(whitelist).map((item) => item.toLowerCase()));
   const urls = findUrls(text);
+  const foldedUrls = text.normalize('NFKC');
+  if (foldedUrls !== text) {
+    for (const url of findUrls(foldedUrls)) {
+      if (!urls.includes(url)) urls.push(url);
+    }
+  }
   const urlInForce = asOf >= urlRule.value.enforceFrom;
   for (const url of urls) {
     const key = url.toLowerCase().replace(/\/$/, '');
@@ -215,12 +222,15 @@ function checkCategoryTiming(category, input, asOf, minutesRule, hoursRule, optO
     }
   }
   if (category !== 'promotional') return;
-  const time = readIstTime(input);
+  const clock = readIstTime(input);
   const start = hoursRule.value.start;
   const end = hoursRule.value.end;
-  if (!time) {
-    warnings.push(issue('promotional-hours', 'sentAtIst is missing, so the 10:00–21:00 IST default window was not checked.', 'skill'));
-  } else if (time < start || time >= end) {
+  if (!clock.time) {
+    const message = clock.unparseable
+      ? 'sentAtIst must be HH:MM in IST with a zero-padded hour. The promotional window was not checked.'
+      : 'sentAtIst is missing, so the 10:00–21:00 IST default window was not checked.';
+    warnings.push(issue('promotional-hours', message, 'skill'));
+  } else if (clock.time < start || clock.time >= end) {
     warnings.push(issue(
       'promotional-hours',
       `Promotional messages are restricted to ${start}–${end} IST by default. Schedule II marks the bands outside that window default OFF unless the recipient has switched them on. UNVERIFIED against the gazette imprint; the consolidated text says the gazette prevails.`,
@@ -379,12 +389,19 @@ function lastTen(value) {
 }
 
 function readIstTime(input) {
-  if (typeof input.sentAtIst === 'string') return parseHm(input.sentAtIst.trim());
+  if (input.sentAtIst !== undefined && input.sentAtIst !== null) {
+    if (typeof input.sentAtIst !== 'string') return { time: '', unparseable: true };
+    const parsed = parseHm(input.sentAtIst.trim());
+    if (!parsed) return { time: '', unparseable: input.sentAtIst.trim() !== '' };
+    return { time: parsed, unparseable: false };
+  }
   if (typeof input.sentAt === 'string' && input.sentAt.includes('T') && input.sentAt.includes('+05:30')) {
     const clock = input.sentAt.split('T')[1]?.slice(0, 5);
-    return parseHm(clock ?? '');
+    const parsed = parseHm(clock ?? '');
+    if (!parsed) return { time: '', unparseable: true };
+    return { time: parsed, unparseable: false };
   }
-  return '';
+  return { time: '', unparseable: false };
 }
 
 function parseHm(value) {

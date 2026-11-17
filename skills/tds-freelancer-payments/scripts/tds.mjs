@@ -11,6 +11,7 @@ import { CONFIRM_SENTENCE, disclaimer } from './_lib/disclaimer.mjs';
 import { parseIsoDate } from './_lib/fy.mjs';
 import { formatMinor, parseAmount, pct } from './_lib/money.mjs';
 import { loadDomain, needsConfirm, ruleById, rulesOn } from './_lib/rules.mjs';
+import { foldDocumented } from './_lib/textprep.mjs';
 
 const MAX_BYTES = 10 * 1024;
 const HIDDEN = /[\u200B\u200C\u200D\uFEFF\u2060\u180E\u202A-\u202E\u2066-\u2069]/;
@@ -340,9 +341,10 @@ function requireMinor(value, name) {
 }
 
 function clean(value) {
-  const cleaned = value.normalize('NFKC').trim();
-  if (HIDDEN.test(cleaned)) throw usage('input contains a zero-width or bidi control character');
-  return cleaned;
+  if (HIDDEN.test(value)) throw usage('input contains a zero-width or bidi control character');
+  const folded = foldDocumented(value.trim());
+  if (HIDDEN.test(folded.text)) throw usage('input contains a zero-width or bidi control character');
+  return folded.text;
 }
 
 function packDisclaimer() {

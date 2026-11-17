@@ -47,7 +47,7 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 - **Dates:** all date logic runs in IST (`Asia/Kolkata`, UTC+05:30, no DST). Inputs are `YYYY-MM-DD` strings. Never use `new Date('YYYY-MM-DD')` (that parses as UTC); use `lib/fy.mjs`.
 - **FY:** 1 Apr–31 Mar. `fyOf('2026-03-31') -> "2025-26"`, `fyOf('2026-04-01') -> "2026-27"`. Display format `"2025-26"`; the GST portal also uses `"2025-2026"`, so accept both on input.
 - **Input sanitisation:**
-  - Trim the input and NFKC-normalise it. Strip internal spaces and hyphens for IDs, uppercase PAN, GSTIN and IFSC, and reject zero-width characters.
+  - Trim the input. Strip ASCII spaces and hyphens for IDs, and also a character whose compatibility decomposition is only an ASCII space or hyphen. Uppercase only ASCII `a-z` for PAN, GSTIN, IFSC, and other codes. Map fullwidth digits U+FF10–U+FF19 to ASCII 0-9 and warn. Do not run NFKC on the whole string: a character that becomes an ASCII letter or digit only through compatibility decomposition or default case folding is a look-alike and must fail the charset or decimal check. That includes long s (U+017F), Kelvin sign (U+212A), Latin ligatures, Roman numerals, fullwidth Latin letters, dotless i (U+0131), sharp s (U+00DF), and superscript or circled digits. Cyrillic look-alikes stay rejected too. Reject zero-width characters.
   - Limit input length to 10 KB to prevent regex DoS; use only anchored regexes with no nested quantifiers.
 - **Crypto:** `crypto.timingSafeEqual`, only on equal-length Buffers; check the length first.
 - **Unicode:** the rupee sign is U+20B9 `₹`. Never write "Rs." in generated invoices unless the user asks for it.
@@ -123,7 +123,7 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 - **Edge cases:**
   - 13th character `0` is invalid.
   - The PAN segment must pass PAN format (§1.10), except for UIN/NRTP/TDS types.
-  - Unicode look-alikes (Cyrillic А) must be rejected.
+  - Unicode look-alikes must be rejected. That includes Cyrillic `А` and the compatibility and case-fold characters named in §0.3. Fullwidth digits U+FF10–U+FF19 are mapped to ASCII and warned.
   - Output must say: "Checksum valid ≠ registered/active; check services.gst.gov.in/services/searchtp".
 
 ### 1.2 gst-invoice  (Agent 1)

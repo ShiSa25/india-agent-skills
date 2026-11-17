@@ -6,6 +6,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { disclaimer, CONFIRM_SENTENCE } from './_lib/disclaimer.mjs';
 import { parseAmount } from './_lib/money.mjs';
 import { loadDomain, needsConfirm, ruleById } from './_lib/rules.mjs';
+import { asciiUpper, foldDocumented } from './_lib/textprep.mjs';
 
 const FIELD_MAX = 10 * 1024;
 const BODY_MAX = 1024 * 1024;
@@ -113,7 +114,7 @@ export function explainSubunits(input) {
   };
   const code = readField(input.currency, 'currency');
   if (code.error) return result(domain, false, rulesFor(), { errors: [code.error], subunits: null, subunitsText: null });
-  const currency = code.value.toUpperCase();
+  const currency = asciiUpper(code.value).text;
   const rules = rulesFor(currency);
   if (!/^[A-Z]{3}$/.test(currency)) {
     return result(domain, false, rulesFor(), {
@@ -474,7 +475,7 @@ function amountToMinor(amount, exponent) {
   if (typeof amount !== 'string') throw new UsageError('amount must be a decimal string or a bigint of minor units');
   const field = readField(amount, 'amount');
   if (field.error) throw new UsageError(field.error);
-  const stripped = field.value.replaceAll(',', '').replace(/^₹/, '');
+  const stripped = foldDocumented(field.value).text.replaceAll(',', '').replace(/^₹/, '');
   return parseAmount(stripped, exponent);
 }
 
@@ -491,9 +492,9 @@ function readField(value, label) {
   if (typeof value !== 'string') throw new UsageError(`${label} must be a string`);
   if (Buffer.byteLength(value) > FIELD_MAX) return { error: `${label} exceeds 10 KB` };
   if (CONTROLS.test(value)) return { error: `${label} contains a disallowed control character` };
-  const normalized = value.normalize('NFKC').trim();
-  if (CONTROLS.test(normalized)) return { error: `${label} contains a disallowed control character` };
-  return { value: normalized };
+  const trimmed = value.trim();
+  if (CONTROLS.test(trimmed)) return { error: `${label} contains a disallowed control character` };
+  return { value: trimmed };
 }
 
 function readRaw(rawBody) {

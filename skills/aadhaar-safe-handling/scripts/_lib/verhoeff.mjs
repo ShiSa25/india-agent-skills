@@ -33,6 +33,8 @@ const P = [
 
 const INV = [0, 4, 3, 2, 1, 5, 6, 7, 8, 9];
 
+import { containsBlocked, foldDocumented } from './textprep.mjs';
+
 const ZERO_WIDTH = new Set([
   0x180e, 0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x2060, 0x2061, 0x2062, 0x2063, 0x2064, 0xfeff,
 ]);
@@ -62,17 +64,20 @@ export function verhoeffCheckDigit(body) {
 }
 
 /**
- * Trim, NFKC, strip spaces and hyphens. Rejects zero-width characters.
+ * Trim, map fullwidth digits, strip spaces and hyphens. Rejects zero-width
+ * characters and any other character that is not an ASCII digit. Superscript,
+ * circled, and other compatibility digits are not accepted here. The scanner
+ * still folds those so a look-alike number can be masked.
  * @param {string} input
  */
 export function normalizeDigits(input) {
   if (typeof input !== 'string') throw new TypeError('expected a string');
   if (Buffer.byteLength(input, 'utf8') > 10 * 1024) throw new TypeError('input exceeds 10 KB');
   if (containsBlocked(input)) throw new TypeError('zero-width or bidi control character rejected');
-  const nfkc = input.normalize('NFKC');
-  if (containsBlocked(nfkc)) throw new TypeError('zero-width or bidi control character rejected');
+  const folded = foldDocumented(input.trim());
+  if (containsBlocked(folded.text)) throw new TypeError('zero-width or bidi control character rejected');
   let out = '';
-  for (const ch of nfkc.trim()) {
+  for (const ch of folded.text) {
     if (ch === ' ' || ch === '-' || ch === '\t') continue;
     out += ch;
   }
@@ -301,12 +306,3 @@ function isDigits(value) {
   return true;
 }
 
-function containsBlocked(value) {
-  for (const ch of value) {
-    const cp = ch.codePointAt(0);
-    if (ZERO_WIDTH.has(cp)) return true;
-    if (cp >= 0x202a && cp <= 0x202e) return true;
-    if (cp >= 0x2066 && cp <= 0x2069) return true;
-  }
-  return false;
-}

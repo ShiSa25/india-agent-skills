@@ -322,9 +322,9 @@ function readField(value, label) {
   if (typeof value !== 'string') throw new UsageError(`${label} must be a string`);
   if (Buffer.byteLength(value) > FIELD_MAX) return { error: `${label} exceeds 10 KB` };
   if (CONTROLS.test(value)) return { error: `${label} contains a disallowed control character` };
-  const normalized = value.normalize('NFKC').trim();
-  if (CONTROLS.test(normalized)) return { error: `${label} contains a disallowed control character` };
-  return { value: normalized };
+  const trimmed = value.trim();
+  if (CONTROLS.test(trimmed)) return { error: `${label} contains a disallowed control character` };
+  return { value: trimmed };
 }
 
 function readRaw(rawBody) {

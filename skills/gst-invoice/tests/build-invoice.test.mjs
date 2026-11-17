@@ -157,6 +157,25 @@ describe('Rule 46 invoice', () => {
     assert.ok(result.warnings.some((warning) => warning.includes('starts with 0')));
   });
 
+  test('a superscript quantity and a fullwidth invoice letter are rejected', () => {
+    const qty = invoice({}, { quantity: '1\u00B2', service: true });
+    assert.equal(qty.valid, false);
+    assert.ok(qty.errors.some((error) => error.includes('quantity')));
+    assert.equal(qty.invoice, null);
+    const number = invoice({ invoiceNumber: '\uFF29NV/26-27/0001' });
+    assert.equal(number.valid, false);
+    assert.ok(number.errors.some((error) => error.includes('Invoice number')));
+    const country = invoice({
+      recipient: { name: 'US Client', address: '1 Market Street', loc: 'San Francisco', country: '\u2160ndia' },
+      supplyType: 'export',
+      supplyKind: 'services',
+      lut: true,
+      placeOfSupply: '96',
+    });
+    assert.equal(country.valid, false);
+    assert.ok(country.errors.some((error) => error.includes('look-alike')));
+  });
+
   test('duplicate number in the same FY is rejected', () => {
     const result = invoice({ priorNumbers: ['INV/2026-27/0001'] });
     assert.equal(result.valid, false);

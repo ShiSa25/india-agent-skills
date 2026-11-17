@@ -71,7 +71,7 @@ Rules data is `scripts/_rules/ids.json`, as of 2026-11-01. Do not hardcode a hol
 - `HDFC0ABC123` is a valid shape: the branch code may contain letters.
 - `011001` is not a PIN. `560001` with state `29` matches Karnataka. `396210` with state `24` is `shared`. `396210` with state `29` is still a valid PIN and warns of a mismatch.
 - `+91 98765-43210` becomes `9876543210` and `+919876543210`. `5876543210` is invalid and `confirm` is true. `9198765432` is ten digits starting with 9, so the leading `91` is not stripped. `1800-123-4567` is toll-free. `011-23456789` is a landline. `+1 9876543210` is the wrong country code.
-- Lowercase PAN, TAN, and IFSC are uppercased and warned. Spaces and hyphens are removed. Fullwidth digits are NFKC-normalised. A Cyrillic look-alike is rejected. A zero-width or bidi character is rejected. Input over 10 KB is rejected.
+- Lowercase ASCII letters in a PAN, TAN, or IFSC are uppercased and warned. Spaces and hyphens are removed. Fullwidth digits U+FF10–U+FF19 are mapped to ASCII and warned. The whole string is not NFKC-normalised. A Cyrillic look-alike is rejected. So is a character that becomes an ASCII letter only through compatibility decomposition or case folding (long s, Kelvin sign, ligatures, Roman numerals, fullwidth Latin letters, dotless i, sharp s). A zero-width or bidi character is rejected. Input over 10 KB is rejected.
 - SPEC §1.10 says holder `G` means "government". The department page says "Government Agency". This skill uses the department's words.
 
 ## Example prompts
