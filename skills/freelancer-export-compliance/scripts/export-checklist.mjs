@@ -2,8 +2,10 @@
 /**
  * Export-of-services checklist for a freelancer invoice.
  *   node scripts/export-checklist.mjs --json '{"invoiceDate":"2026-10-15",...}'
- * Exit 0 when the supply qualifies and no realisation clock is already late,
- * 1 when it does not qualify or a clock is late, 2 on a usage error.
+ * Exit 0 when valid is true: the supply qualifies, forexReceived was not
+ * omitted, and no realisation clock is already late. Exit 1 when valid is
+ * false, including an SEZ supply that omits forexReceived (qualifies stays
+ * true). Exit 2 on a usage error.
  */
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';

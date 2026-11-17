@@ -2,10 +2,14 @@
 
 ## Unreleased
 
-- `cashfree-integration`: an amount with more than 2 decimal places, a signed zero, a missing `paymentAmount` or `expectedAmount`, or a top-level JSON array does not fulfil. The Next.js sample calls `jsonDecimalToken` and `decideCashfreeEvent` before success.
-- `razorpay-integration`: `payment.captured` and `order.paid` do not fulfil when `expectedMinor` or `amountMinor` is omitted, and they do not record that omission as a capture of 0. A signed zero does not fulfil.
-- `freelancer-export-compliance`: omitting `forexReceived` fails IGST s.2(6)(iv) and the LUT limb.
-- `gst-invoice`: deemed-export tax is left as a SPEC gap. No new deemed-export rule was added.
+No package version bump and no tag. Metadata stays 0.1.2. The notes below cover what landed in #22–#27 and the fail-closed follow-up. Callers that depended on the old acceptance rules need to change.
+
+- **Unicode (`lib/textprep.mjs`).** Only ASCII `a-z` is uppercased. Fullwidth digits U+FF10–U+FF19 map to ASCII and warn. Compatibility and case-fold look-alikes are rejected (long s, Kelvin sign, ligatures, Roman numerals, fullwidth Latin, dotless i, sharp s, capital sharp s, superscript and circled digits, Cyrillic). The whole string is not NFKC-normalised. Aadhaar and PII scanners may still fold those characters so a look-alike is caught. This applies to GSTIN, PAN, TAN, IFSC, invoice fields, amounts, DLT headers, and currency codes.
+- **`sms-otp-dlt`.** A promotional opt-out is checked even when `sentAtIst` is missing. A missing or unparseable time skips only the 10:00–21:00 window. `9:30` is not `09:30`. Opt-out words and URL hosts use ASCII case only. A Kelvin sign does not count as `block`. A URL that matches the whitelist only after NFKC is not whitelisted. A missing callback whitelist entry stays a warning. A non-whitelisted URL, APK, or OTT link is an error from 1 Oct 2024.
+- **`gst-e-invoice-json`.** `IgstOnIntra` follows NIC 2268 (no `Y` on export or SEZ), 2262 (no `Y` when the states differ), 2172 (intra-state IGST exception), and 2294 (`Y` on B2B or deemed export only with reverse charge). Buyer PIN `999999` is rejected for B2B, SEZ, and deemed export (2274). Supplier PIN `999999` is rejected (2276). A direct-export PIN other than `999999` is an error when it is present (2275). Omitting it stays valid and warns.
+- **`razorpay-integration` and `cashfree-integration`.** A missing amount is `needs_amount` and does not record a capture of 0. A mismatch, a signed zero, more than 2 Cashfree decimal places, a null `jsonDecimalToken` (duplicate structural keys, a non-decimal, a top-level array, malformed JSON, an exponent, or nesting deeper than 32) is `amount_mismatch` and does not throw. Those two actions set `storeEventId` / `storeKey` to false and `httpStatus` to 400. Do not store the event id or idempotency key, so the provider can retry. Samples call the decision helper after signature verification and return 200 only when `fulfil` is true.
+- **`freelancer-export-compliance`.** Omitting `forexReceived` fails IGST s.2(6)(iv) and the LUT limb. Exit 0 only when `valid` is true. An SEZ supply that omits `forexReceived` has `qualifies: true`, `valid: false`, and exit 1. `qualifies` is not cleared just because `valid` is false.
+- **`gst-invoice`.** Fullwidth digits in a number, date, or amount are mapped to ASCII. Other look-alikes are rejected. SPEC §1.2 does not define a deemed-export tax split, and no deemed-export rule was added.
 
 ## 0.1.2 — 2026-11-10
 

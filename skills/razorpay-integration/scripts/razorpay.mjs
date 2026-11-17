@@ -13,6 +13,7 @@ const BODY_MAX = 1024 * 1024;
 const CONTROLS = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/;
 const HEX_MAC = /^[0-9a-f]{64}$/;
 const INTEGER = /^-?[0-9]+$/;
+const AMOUNT_RETRY_WARNING = 'Do not store the event id. Return non-2xx so Razorpay can retry.';
 
 export class UsageError extends Error {
   constructor(message) {
@@ -257,17 +258,7 @@ export function decideRazorpayEvent(input) {
   const refunded = BigInt(base.refundedMinor);
   if (fulfilRule.value.includes(eventName.value)) {
     if (signedZeroMinor(input.amountMinor) || signedZeroMinor(input.expectedMinor)) {
-      return decision(domain, rules, {
-        ...base,
-        valid: false,
-        httpStatus: 200,
-        action: 'amount_mismatch',
-        fulfil: false,
-        duplicate: false,
-        storeEventId: true,
-        errors: ['A signed zero amount is invalid. Do not ship.'],
-        warnings: [],
-      });
+      return amountRetryDecision(domain, rules, base, 'amount_mismatch', 'A signed zero amount is invalid. Do not ship.');
     }
     const amount = optionalMinor(input.amountMinor, 'amountMinor');
     const nextCaptured = amount === null ? captured : amount;
@@ -275,30 +266,10 @@ export function decideRazorpayEvent(input) {
     if (!already) {
       const expected = optionalMinor(input.expectedMinor, 'expectedMinor');
       if (amount === null || expected === null) {
-        return decision(domain, rules, {
-          ...base,
-          valid: false,
-          httpStatus: 200,
-          action: 'needs_amount',
-          fulfil: false,
-          duplicate: false,
-          storeEventId: true,
-          errors: ['expectedMinor is required before payment.captured or order.paid can fulfil. Do not ship. Omitting amountMinor must not be stored as capturedMinor 0.'],
-          warnings: [],
-        });
+        return amountRetryDecision(domain, rules, base, 'needs_amount', 'expectedMinor is required before payment.captured or order.paid can fulfil. Do not ship. Omitting amountMinor must not be stored as capturedMinor 0.');
       }
       if (expected !== nextCaptured) {
-        return decision(domain, rules, {
-          ...base,
-          valid: false,
-          httpStatus: 200,
-          action: 'amount_mismatch',
-          fulfil: false,
-          duplicate: false,
-          storeEventId: true,
-          errors: ['amountMinor does not match expectedMinor. Do not ship.'],
-          warnings: [],
-        });
+        return amountRetryDecision(domain, rules, base, 'amount_mismatch', 'amountMinor does not match expectedMinor. Do not ship.');
       }
       return decision(domain, rules, {
         ...base,
@@ -316,17 +287,7 @@ export function decideRazorpayEvent(input) {
     }
     const expected = optionalMinor(input.expectedMinor, 'expectedMinor');
     if ((amount !== null && amount !== captured) || (expected !== null && expected !== captured)) {
-      return decision(domain, rules, {
-        ...base,
-        valid: false,
-        httpStatus: 200,
-        action: 'amount_mismatch',
-        fulfil: false,
-        duplicate: false,
-        storeEventId: true,
-        errors: ['The capture amount does not match the amount already stored. Do not change capturedMinor and do not ship.'],
-        warnings: [],
-      });
+      return amountRetryDecision(domain, rules, base, 'amount_mismatch', 'The capture amount does not match the amount already stored. Do not change capturedMinor and do not ship.');
     }
     return decision(domain, rules, {
       ...base,
@@ -413,6 +374,20 @@ export function decideRazorpayEvent(input) {
     storeEventId: true,
     errors: [],
     warnings: [`no fulfilment rule for ${eventName.value}`],
+  });
+}
+
+function amountRetryDecision(domain, rules, base, action, error) {
+  return decision(domain, rules, {
+    ...base,
+    valid: false,
+    httpStatus: 400,
+    action,
+    fulfil: false,
+    duplicate: false,
+    storeEventId: false,
+    errors: [error],
+    warnings: [AMOUNT_RETRY_WARNING],
   });
 }
 

@@ -282,6 +282,8 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(again.action, 'amount_mismatch');
     assert.equal(again.valid, false);
     assert.equal(again.fulfil, false);
+    assert.equal(again.storeKey, false);
+    assert.equal(again.httpStatus, 400);
     const sameAmount = decideCashfreeEvent({
       ...base,
       idempotencyKey: 'second-success-ok',
@@ -304,6 +306,31 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(ambiguous.fulfil, false);
     assert.equal(ambiguous.valid, false);
     assert.equal(ambiguous.action, 'amount_mismatch');
+    assert.equal(ambiguous.storeKey, false);
+  });
+
+  test('needs_amount and amount_mismatch do not store the idempotency key', () => {
+    const missing = decideCashfreeEvent({ ...base, idempotencyKey: 'retry-missing', paymentStatus: 'SUCCESS' });
+    const mismatch = decideCashfreeEvent({
+      ...base,
+      idempotencyKey: 'retry-mismatch',
+      paymentStatus: 'SUCCESS',
+      paymentAmount: '170.00',
+      expectedAmount: '1.00',
+    });
+    for (const decision of [missing, mismatch]) {
+      assert.equal(decision.storeKey, false, decision.action);
+      assert.equal(decision.httpStatus, 400, decision.action);
+      assert.equal(decision.fulfil, false, decision.action);
+      assert.ok(
+        decision.warnings.includes('Do not store the idempotency key. Return non-2xx so Cashfree can retry.'),
+        decision.action,
+      );
+    }
+    const recorded = decideCashfreeEvent({ ...base, idempotencyKey: 'retry-failed', paymentStatus: 'FAILED' });
+    assert.equal(recorded.action, 'record');
+    assert.equal(recorded.storeKey, true);
+    assert.equal(recorded.httpStatus, 200);
   });
 
   test('version 2026-01-01 is accepted and 2023-08-01 is not', () => {
@@ -447,6 +474,8 @@ describe('version, idempotency, and fulfilment', () => {
     assert.equal(both.action, 'needs_amount');
     assert.equal(both.fulfil, false);
     assert.equal(both.valid, false);
+    assert.equal(both.storeKey, false);
+    assert.equal(both.httpStatus, 400);
     assert.match(both.errors[0], /expectedAmount|paymentAmount/);
     const expectedOnly = decideCashfreeEvent({
       ...base,
@@ -532,6 +561,17 @@ describe('version, idempotency, and fulfilment', () => {
 describe('handlers and evals', () => {
   test('Express, Next.js, and Fastify read the raw body', () => {
     const text = readFileSync(join(skillRoot, 'references', 'handlers.md'), 'utf8');
+    const skill = readFileSync(join(skillRoot, 'SKILL.md'), 'utf8');
+    const skillExpress = skill.slice(skill.indexOf('Express, registered'), skill.indexOf('Next.js route handler'));
+    assert.match(skillExpress, /jsonDecimalToken\(/);
+    assert.match(skillExpress, /decideCashfreeEvent\(/);
+    const skillToken = skillExpress.indexOf('jsonDecimalToken(');
+    const skillDecide = skillExpress.indexOf('decideCashfreeEvent(');
+    const skillGuard = skillExpress.indexOf("decision.action === 'amount_mismatch'");
+    const skillFulfil = skillExpress.indexOf('!decision.fulfil');
+    const skillSuccess = skillExpress.lastIndexOf('status(200)');
+    assert.ok(skillToken > 0 && skillDecide > skillToken && skillGuard > skillDecide);
+    assert.ok(skillFulfil > skillGuard && skillSuccess > skillFulfil);
     assert.match(text, /express\.raw\(\{ type: 'application\/json' \}\)/);
     assert.match(text, /await req\.text\(\)/);
     assert.match(text, /parseAs: 'buffer'/);

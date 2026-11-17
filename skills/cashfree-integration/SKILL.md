@@ -65,7 +65,7 @@ Rules data is `scripts/_rules/cashfree.json`, as of 2026-11-01.
 - The timestamp string is used exactly. It is not trimmed and it is not rewritten from milliseconds to seconds before the HMAC.
 - A 64-character hex digest is rejected with reason `expected base64`. Base64 is the standard alphabet with padding. Comparison uses `timingSafeEqual` only when both MAC buffers have the same length.
 - Versions `2025-01-01` and `2026-01-01` are accepted. Both sample tables include `x-idempotency-key`. Version `2023-08-01` does not, and this skill rejects it. [Payment webhooks](https://www.cashfree.com/docs/api-reference/payments/latest/payments/webhooks). The [2025-01-01 header table](https://www.cashfree.com/docs/api-reference/payments/previous/v2025-01-01/payments/webhooks) shows timestamp `1746427759733`.
-- Deduplicate on `x-idempotency-key`. The [overview](https://www.cashfree.com/docs/api-reference/payments/latest/webhooks/overview) text says `x-idempotency-header`. The header table says `x-idempotency-key`. This skill follows the table. A duplicate returns 200 and does not fulfil again. Store the key with a unique constraint in the same transaction as the side effect.
+- Deduplicate on `x-idempotency-key`. The [overview](https://www.cashfree.com/docs/api-reference/payments/latest/webhooks/overview) text says `x-idempotency-header`. The header table says `x-idempotency-key`. This skill follows the table. A duplicate returns 200 and does not fulfil again. Store the key with a unique constraint in the same transaction as the side effect. On `needs_amount` or `amount_mismatch`, `storeKey` is false and `httpStatus` is 400. Do not store the key. Return non-2xx so Cashfree can retry. Storing the key would make that retry a duplicate that never fulfils.
 - Fulfil only when `payment_status` is `SUCCESS`. `FAILED`, `PENDING`, and `NOT_ATTEMPTED` do not fulfil. A later `SUCCESS` after `FAILED` does. A later `FAILED` does not undo `SUCCESS`. [Idempotency](https://www.cashfree.com/docs/api-reference/payments/latest/webhooks/idempotency).
 - Replay window: 300 seconds, inclusive. 301 seconds is `stale`. The same distance in the future is `future`. The number is the [Subscriptions](https://www.cashfree.com/docs/api-reference/payments/latest/subscription/webhook-signature) recommendation ("5 minutes"). The Payment Gateway signature page does not publish a number. Pass a smaller `toleranceSec` to tighten the window. A larger value is rejected. The client secret is server-side only. The App ID may be in the client. Do not put the secret in a browser bundle, a mobile app, a public env prefix, or a log.
 - Milliseconds versus seconds: a numeric timestamp greater than `1000000000000` is treated as milliseconds. Any smaller integer is treated as seconds. Official samples are milliseconds. Cashfree does not publish this threshold, so the rule is `verified: false`. Any result that applies it sets `confirm: true` and includes "Confirm with the official source before relying on this."
@@ -89,8 +89,30 @@ app.post('/cashfree/webhook', express.raw({ type: 'application/json' }), (req, r
     nowMs: Date.now(),
   });
   if (!result.valid) return res.status(400).end();
-  // Insert x-idempotency-key in the same transaction as the side effect, then return 200.
-  res.status(200).end();
+  let event;
+  try {
+    event = JSON.parse(rawBody.toString('utf8'));
+  } catch {
+    return res.status(400).end();
+  }
+  const paymentAmount = jsonDecimalToken(rawBody, 'payment_amount');
+  const decision = decideCashfreeEvent({
+    signatureVerified: true,
+    version: req.get('x-webhook-version') ?? '',
+    idempotencyKey: req.get('x-idempotency-key') ?? '',
+    paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
+    paymentAmount,
+    expectedAmount: lookupStoredOrderAmount(event?.data?.order?.order_id),
+  });
+  if (decision.action === 'amount_mismatch' || decision.action === 'needs_amount') {
+    // storeKey is false. Do not insert the idempotency key.
+    return res.status(400).end();
+  }
+  // In one database transaction: insert x-idempotency-key with a unique constraint.
+  // Ship only when decision.fulfil is true. On conflict, commit nothing.
+  // Return 200 only after that commit.
+  if (!decision.fulfil) return res.status(decision.httpStatus).end();
+  return res.status(200).end();
 });
 ```
 
@@ -123,6 +145,7 @@ export async function POST(req) {
     expectedAmount: lookupStoredOrderAmount(event?.data?.order?.order_id),
   });
   if (decision.action === 'amount_mismatch' || decision.action === 'needs_amount') {
+    // storeKey is false. Do not insert the idempotency key.
     return new Response(null, { status: 400 });
   }
   // Ship only when decision.fulfil is true. Return 200 only after that commit.
@@ -157,7 +180,8 @@ Sign `req.rawBody` plus the timestamp header. Do not sign `JSON.stringify(req.bo
 - The value `1000000000000` is not greater than the threshold, so it is treated as seconds. `1000000000001` is milliseconds.
 - Version `2023-08-01` is `unexpected_version`. An empty `x-idempotency-key` is `missing_idempotency_key`.
 - Keep `170.00` as the string `170.00`. Do not run the amount through a JSON number. `170.000` and `0.0001` are `amount_mismatch` (`fulfil: false`), not a usage error.
-- Omitting `paymentAmount` or `expectedAmount` is `needs_amount` and does not fulfil. Pass the order amount you stored, not a value copied from the body.
+- Omitting `paymentAmount` or `expectedAmount` is `needs_amount` and does not fulfil. Pass the order amount you stored, not a value copied from the body. `storeKey` is false and `httpStatus` is 400. Do not store `x-idempotency-key`.
+- `amount_mismatch` (a different amount, an ambiguous token, more than 2 decimal places, or a signed zero) also sets `storeKey` false and `httpStatus` 400. A duplicate structural `payment_amount`, including two copies of the same decimal, is that case. Nesting deeper than 32 is that case and does not throw.
 - `-0` and `-0.00` are `amount_mismatch` and do not fulfil.
 - A top-level JSON array body yields a null `payment_amount` token and does not fulfil.
 - Two structural `payment_amount` fields do not fulfil, including when both say `170.00` and when the second value is null, a boolean, a string, an object, or an array. A key nested inside that value is not the amount. Malformed JSON returns null. Depth above 32 fails closed (null, no `RangeError`, no fulfil).

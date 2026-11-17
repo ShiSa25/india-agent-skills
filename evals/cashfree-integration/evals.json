@@ -101,7 +101,9 @@
         },
         "valid": false,
         "fulfil": false,
-        "action": "needs_amount"
+        "action": "needs_amount",
+        "storeKey": false,
+        "httpStatus": 400
       }
     },
     {

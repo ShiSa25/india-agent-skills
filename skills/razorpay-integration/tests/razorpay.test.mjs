@@ -262,6 +262,8 @@ describe('events', () => {
     assert.equal(repeat.valid, false);
     assert.equal(repeat.fulfil, false);
     assert.equal(repeat.capturedMinor, '50000');
+    assert.equal(repeat.storeEventId, false);
+    assert.equal(repeat.httpStatus, 400);
     const same = decideRazorpayEvent({
       ...base,
       eventId: 'evt_same',
@@ -281,6 +283,8 @@ describe('events', () => {
     });
     assert.equal(mismatch.fulfil, false);
     assert.equal(mismatch.action, 'amount_mismatch');
+    assert.equal(mismatch.storeEventId, false);
+    assert.equal(mismatch.httpStatus, 400);
     const matched = decideRazorpayEvent({
       ...base,
       event: 'payment.captured',
@@ -414,6 +418,9 @@ describe('events', () => {
     assert.equal(captured.action, 'needs_amount');
     assert.equal(captured.fulfil, false);
     assert.equal(captured.valid, false);
+    assert.equal(captured.storeEventId, false);
+    assert.equal(captured.httpStatus, 400);
+    assert.ok(captured.warnings.includes('Do not store the event id. Return non-2xx so Razorpay can retry.'));
     assert.equal(captured.state, 'none');
     assert.equal(captured.capturedMinor, '0');
     assert.match(captured.errors[0], /expectedMinor/);
@@ -440,6 +447,8 @@ describe('events', () => {
     assert.equal(row.action, 'amount_mismatch');
     assert.equal(row.fulfil, false);
     assert.equal(row.valid, false);
+    assert.equal(row.storeEventId, false);
+    assert.equal(row.httpStatus, 400);
     assert.notEqual(row.state, 'captured');
     const both = decideRazorpayEvent({
       ...base,
@@ -477,6 +486,23 @@ describe('handlers and evals', () => {
     assert.match(text, /server-side only/);
     assert.match(text, /Return 200 only after/);
     assert.doesNotMatch(text, /res\.status\(200\)\.end\(\);\n  const event/);
+    for (const [heading, next] of [['## Express', '## Next.js'], ['## Next.js', '## Fastify'], ['## Fastify', '']]) {
+      const start = text.indexOf(heading);
+      const end = next ? text.indexOf(next) : text.length;
+      const section = text.slice(start, end);
+      const decideAt = section.indexOf('decideRazorpayEvent(');
+      const guardAt = section.indexOf("decision.action === 'amount_mismatch'");
+      const fulfilAt = section.indexOf('!decision.fulfil');
+      const successAt = Math.max(
+        section.lastIndexOf('status(200)'),
+        section.lastIndexOf('code(200)'),
+        section.lastIndexOf('status: 200'),
+      );
+      assert.ok(decideAt > 0, heading);
+      assert.ok(guardAt > decideAt, heading);
+      assert.ok(fulfilAt > guardAt, heading);
+      assert.ok(successAt > fulfilAt, heading);
+    }
   });
 
   test('evals.json expectations match the scripts', () => {

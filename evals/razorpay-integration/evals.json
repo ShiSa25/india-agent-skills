@@ -99,7 +99,9 @@
         "fulfil": false,
         "action": "needs_amount",
         "state": "none",
-        "capturedMinor": "0"
+        "capturedMinor": "0",
+        "storeEventId": false,
+        "httpStatus": 400
       }
     },
     {

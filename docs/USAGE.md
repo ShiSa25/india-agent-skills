@@ -89,7 +89,7 @@ Exit `1` for `9917USA00013OS5`:
 
 ## gst-invoice
 
-Exit `0`. `html` is omitted. The rest of the object is the stdout.
+Exit `0`. `html` is omitted. The rest of the object is the stdout. Fullwidth digits in a number, date, or amount are mapped to ASCII. Other look-alikes are rejected. SPEC §1.2 does not define a deemed-export tax split, and this skill does not add one.
 
 ```bash
 node skills/gst-invoice/scripts/build-invoice.mjs --json '{"supplier":{"name":"Acme Supplies","address":"1 Test Road, Bengaluru","gstin":"29AABCC1234A1ZD","stateCode":"29","pin":"560001","loc":"Bengaluru"},"recipient":{"name":"Beta Buyers","address":"2 Sample Lane, Mumbai","gstin":"27AABCC1234A1ZH","stateCode":"27","pin":"400001","loc":"Mumbai"},"invoiceNumber":"INV/2026-27/0001","invoiceDate":"2026-04-15","placeOfSupply":"27","supplyType":"domestic","reverseCharge":false,"signature":"Authorised signatory","priorNumbers":[],"lines":[{"description":"Consulting","hsn":"998313","quantity":"1","unit":"NOS","taxable":"42000.00","rateBp":1800,"service":true}]}'
@@ -285,7 +285,7 @@ The endorsement string is byte-exact:
 
 ## gst-e-invoice-json
 
-Input: the inter-state `gst-invoice` stdout above, including `html`. Exit `0`. Full object:
+Input: the inter-state `gst-invoice` stdout above, including `html`. Exit `0`. Full object. `IgstOnIntra` follows NIC 2268, 2262, 2172, and 2294. Buyer PIN `999999` is rejected for B2B, SEZ, and deemed export (2274). Supplier PIN `999999` is rejected (2276). A direct-export PIN other than `999999` is an error when it is present (2275).
 
 ```bash
 node skills/gst-e-invoice-json/scripts/build-einvoice.mjs --json '<gst-invoice stdout>'
@@ -374,7 +374,7 @@ node skills/gst-e-invoice-json/scripts/build-einvoice.mjs --json '<gst-invoice s
 
 ## freelancer-export-compliance
 
-Exit `0`. Full object, including `items` and `confirmReasons`.
+Exit `0` only when `valid` is true. Omitting `forexReceived` fails IGST s.2(6)(iv) and the LUT limb. An SEZ supply that omits it has `qualifies: true`, `valid: false`, and exit 1. `qualifies` is not cleared just because `valid` is false. Full object, including `items` and `confirmReasons`.
 
 ```bash
 node skills/freelancer-export-compliance/scripts/export-checklist.mjs --json '{"invoiceDate":"2026-03-15","currency":"USD","clientCountry":"US","supplierInIndia":true,"recipientOutsideIndia":true,"placeOfSupplyOutsideIndia":true,"ownBranch":false,"intermediary":false,"forexReceived":true,"lutFiledFY":"2025-26"}'
@@ -539,7 +539,7 @@ node skills/tds-freelancer-payments/scripts/tds.mjs --json '{"paymentDate":"2026
 
 ## razorpay-integration
 
-`key_secret` and `whsec_test` are fixtures. ₹299.00, exit `0`.
+`key_secret` and `whsec_test` are fixtures. ₹299.00, exit `0`. `payment.captured` and `order.paid` need `amountMinor` and `expectedMinor`. Omitting either is `needs_amount` and is not stored as a capture of 0. A mismatch, including `-0`, is `amount_mismatch`. Both set `storeEventId` false and `httpStatus` 400. Do not store the event id. Return 200 only when `fulfil` is true.
 
 ```bash
 node skills/razorpay-integration/scripts/to-subunits.mjs --json '{"amount":"299.00","currency":"INR"}'
@@ -619,11 +619,11 @@ node skills/razorpay-integration/scripts/decide-event.mjs --json '{"signatureVer
 }
 ```
 
-In Express, read the raw body with `express.raw({ type: 'application/json' })`. HMAC-SHA256 that raw body. Compare with `crypto.timingSafeEqual` only when the two buffers have the same length. A different length returns false and does not throw. Fulfil on `payment.captured` or `order.paid`. `payment.authorized` is not paid.
+In Express, read the raw body with `express.raw({ type: 'application/json' })`. HMAC-SHA256 that raw body. Compare with `crypto.timingSafeEqual` only when the two buffers have the same length. A different length returns false and does not throw. Call `decideRazorpayEvent` after `verifyWebhook`. `needs_amount` and `amount_mismatch` return 400 and do not store `x-razorpay-event-id`. Fulfil on `payment.captured` or `order.paid` only when `decision.fulfil` is true. `payment.authorized` is not paid.
 
 ## cashfree-integration
 
-Signature. Exit `0`.
+Signature. Exit `0`. A missing `paymentAmount` or `expectedAmount` is `needs_amount`. A mismatch, a signed zero, more than 2 decimal places, a null `jsonDecimalToken` (duplicate keys, a non-decimal, a top-level array, malformed JSON, an exponent, or depth above 32) is `amount_mismatch` and does not throw. Both set `storeKey` false and `httpStatus` 400. Do not store `x-idempotency-key`. The Express, Next.js, and Fastify samples call `jsonDecimalToken` and `decideCashfreeEvent` and return 200 only when `fulfil` is true.
 
 ```bash
 node skills/cashfree-integration/scripts/verify-webhook.mjs --json '{"rawBody":"{\"type\":\"PAYMENT_SUCCESS_WEBHOOK\"}","timestamp":"1617695238078","signature":"qYpxv9z56awnigrZ4WIKtxozJ3UJqAaqk4BuDtqCcWU=","secret":"client_secret","nowMs":1617695238078}'
@@ -758,7 +758,7 @@ node skills/upi-payment-links/scripts/upi-link.mjs --json '{"op":"qr","pa":"shop
 
 ## inr-formatting
 
-Exit `0`.
+Exit `0`. Fullwidth digits U+FF10–U+FF19 are mapped to ASCII. Superscript and circled digits are rejected. The string is not NFKC-normalised.
 
 ```bash
 node skills/inr-formatting/scripts/format-inr.mjs --json '{"rupees":"123456789.50"}'
@@ -811,7 +811,7 @@ node skills/inr-formatting/scripts/format-inr.mjs --json '{"paise":"123456789012
 
 ## indian-id-validators
 
-PAN, exit `0`.
+PAN, exit `0`. Only ASCII `a-z` is uppercased. Fullwidth digits are mapped and warned. Look-alikes that fold into ASCII are rejected. The string is not NFKC-normalised.
 
 ```bash
 node skills/indian-id-validators/scripts/validate-pan.mjs --json 'ABCPE1234F'
@@ -943,7 +943,7 @@ node skills/indian-id-validators/scripts/validate-mobile.mjs --json '+91 98765-4
 
 ## aadhaar-safe-handling
 
-Validate, exit `0`.
+Validate, exit `0`. The checker maps fullwidth digits and rejects superscript and circled digits. The scanner still folds those so a look-alike number is masked.
 
 ```bash
 node skills/aadhaar-safe-handling/scripts/validate-aadhaar.mjs --json '234123412346'
@@ -1203,7 +1203,7 @@ node skills/dpdp-compliance-check/scripts/dpdp-check.mjs --json '{"asOf":"2026-1
 
 ## sms-otp-dlt
 
-Lint. Exit `0`. The result does not echo the OTP.
+Lint. Exit `0`. The result does not echo the OTP. A promotional opt-out is checked even when no send time is given. Opt-out words and URL hosts use ASCII case only. A URL that matches the whitelist only after NFKC is not whitelisted.
 
 ```bash
 node skills/sms-otp-dlt/scripts/lint-dlt.mjs --json '{"asOf":"2026-11-01","template":"Your OTP is {#var#}. Do not share it. - Acme","message":"Your OTP is 482913. Do not share it. - Acme","variables":["482913"],"header":"ACMEIN-T","category":"transactional","brandName":"Acme","chainRegistered":true,"templateRegistered":true,"sentAtIst":"16:30"}'
@@ -1271,6 +1271,22 @@ node skills/sms-otp-dlt/scripts/msg91-otp.mjs --json '{"asOf":"2026-11-01","temp
   "disclaimer": "This tool gives general information and format checks only, not tax, legal or financial advice. Rules are as of 2026-11-01 and change often. A valid format does not prove that an ID is registered or active. Confirm with the official source or a qualified professional before filing, invoicing or paying."
 }
 ```
+
+## Changes merged after 0.1.2
+
+The package version stays 0.1.2. There is no new tag. These notes cover pull requests #22–#27 and the fail-closed follow-up. They are breaking for callers that depended on the old acceptance rules. SPEC §1.2 still does not define a deemed-export tax split.
+
+**Unicode.** `lib/textprep.mjs` folds input. Only ASCII `a-z` is uppercased. Fullwidth digits U+FF10–U+FF19 map to ASCII and produce a warning. A character that becomes an ASCII letter or digit only through compatibility decomposition or default case folding is rejected: long s, Kelvin sign, ligatures, Roman numerals, fullwidth Latin, dotless i, sharp s, capital sharp s, superscript and circled digits, and Cyrillic look-alikes. The whole string is not NFKC-normalised. Aadhaar and PII scanners may still fold those characters so a look-alike is caught. The checker does not. GSTIN, PAN, TAN, IFSC, invoice numbers, amounts, DLT headers, and currency codes use this fold.
+
+**DLT.** A promotional template warns for a missing opt-out (`STOP`, `opt-out`, `unsubscribe`, `block`, ASCII case only) even when `sentAtIst` is omitted. A missing or unparseable time skips only the 10:00–21:00 IST window check. `9:30` is not `09:30`. A Kelvin sign (U+212A) does not count as `block`. A URL matches the whitelist by ASCII case fold. A URL that matches only after NFKC is reported as not whitelisted. From 1 Oct 2024 a non-whitelisted URL, APK, or OTT link is an error. A callback missing from `callbackWhitelist` is a warning.
+
+**E-invoice.** `IgstOnIntra` follows the NIC error list: 2268 rejects `Y` for export and SEZ, 2262 rejects `Y` when the supplier state and place of supply differ, 2172 is the intra-state IGST exception, and 2294 requires reverse charge when `Y` is used on B2B or deemed export. Buyer PIN `999999` is rejected for B2B, SEZ, and deemed export (2274). Supplier PIN `999999` is rejected on every supply type (2276). A direct-export PIN that is present and is not `999999` is an error (2275). Omitting that PIN stays valid and warns. Build still writes `999999` and sets `confirm`.
+
+**Payments.** Razorpay `payment.captured` and `order.paid` need `amountMinor` and `expectedMinor`. Omitting either is `needs_amount` and is not stored as a capture of 0. A mismatch, including `-0`, is `amount_mismatch`. Cashfree `SUCCESS` needs `paymentAmount` and `expectedAmount`. A missing amount is `needs_amount`. A mismatch, an ambiguous `jsonDecimalToken` (duplicate structural keys, a non-decimal, a top-level array, malformed JSON, an exponent), more than 2 decimal places, a signed zero, or nesting deeper than 32 is `amount_mismatch` and does not throw. On both skills those two actions set `storeEventId` or `storeKey` to false and `httpStatus` to 400. Do not store the idempotency key or event id, so the provider can retry. Storing it would make the retry a duplicate that never fulfils. Samples return 400 for those actions and return 200 only when `fulfil` is true, after the idempotency commit. A duplicate key or event id still returns 200, does not fulfil, and does not store the id again.
+
+**Export.** Omitting `forexReceived` fails IGST s.2(6)(iv) and the LUT limb. Exit 0 only when `valid` is true. An SEZ supply that omits `forexReceived` has `qualifies: true`, `valid: false`, and exit 1. `qualifies` stays true when a clock is late as well. It is not cleared just because `valid` is false.
+
+**Invoices.** Fullwidth digits in a GST invoice number, date, or amount are mapped to ASCII. A fullwidth Latin letter or a superscript digit is rejected. SPEC does not define a deemed-export tax split. The skill does not add one: deemed export is not zero-rated and is not forced onto IGST. Any intra-state or inter-state figures it still prints are not a deemed-export ruling.
 
 ## Run the scripts yourself
 

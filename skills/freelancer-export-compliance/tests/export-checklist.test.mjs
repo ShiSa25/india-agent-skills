@@ -283,6 +283,28 @@ describe('five export conditions, intermediary, branch, SEZ', () => {
     assert.match(limb.text, /LUT/);
     assert.equal(result.isExport, false);
     assert.equal(result.valid, false);
+    assert.equal(result.qualifies, false);
+    const lut = result.items.find((item) => item.id === 'lut');
+    assert.equal(lut.status, 'fail');
+    assert.match(lut.text, /forexReceived/);
+  });
+
+  test('an SEZ supply that omits forexReceived stays qualified and is not valid', () => {
+    const result = exportChecklist({
+      invoiceDate: '2026-06-01',
+      currency: 'USD',
+      clientCountry: 'IN',
+      supplierInIndia: true,
+      recipientOutsideIndia: false,
+      placeOfSupplyOutsideIndia: false,
+      ownBranch: false,
+      intermediary: false,
+      sez: true,
+      lutFiledFY: '2026-27',
+    });
+    assert.equal(result.isExport, false);
+    assert.equal(result.qualifies, true);
+    assert.equal(result.valid, false);
     const lut = result.items.find((item) => item.id === 'lut');
     assert.equal(lut.status, 'fail');
     assert.match(lut.text, /forexReceived/);
@@ -351,6 +373,22 @@ describe('CLI', () => {
     assert.equal(good.status, 0);
     assert.equal(JSON.parse(good.stdout).fy, '2026-27');
     assert.equal(good.stderr, '');
+
+    const sezOmitted = run(['--json', JSON.stringify({
+      invoiceDate: '2026-06-01',
+      currency: 'USD',
+      clientCountry: 'IN',
+      supplierInIndia: true,
+      recipientOutsideIndia: false,
+      placeOfSupplyOutsideIndia: false,
+      ownBranch: false,
+      intermediary: false,
+      sez: true,
+    })]);
+    assert.equal(sezOmitted.status, 1);
+    const sezBody = JSON.parse(sezOmitted.stdout);
+    assert.equal(sezBody.qualifies, true);
+    assert.equal(sezBody.valid, false);
 
     const branch = run(['--json', JSON.stringify({
       invoiceDate: '2026-10-15',
