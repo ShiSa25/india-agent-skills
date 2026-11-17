@@ -79,15 +79,21 @@ Copy from [references/handlers.md](references/handlers.md). Do not pass `JSON.st
 Express, registered before `express.json()`:
 
 ```javascript
-app.post('/cashfree/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/cashfree/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const rawBody = req.body;
-  const result = verifyCashfreeWebhook({
-    rawBody,
-    timestamp: req.get('x-webhook-timestamp'),
-    signature: req.get('x-webhook-signature'),
-    secret: process.env.CASHFREE_CLIENT_SECRET,
-    nowMs: Date.now(),
-  });
+  let result;
+  try {
+    result = verifyCashfreeWebhook({
+      rawBody,
+      timestamp: req.get('x-webhook-timestamp'),
+      signature: req.get('x-webhook-signature'),
+      secret: process.env.CASHFREE_CLIENT_SECRET,
+      nowMs: Date.now(),
+    });
+  } catch (error) {
+    if (error instanceof UsageError) return res.status(400).end();
+    throw error;
+  }
   if (!result.valid) return res.status(400).end();
   let event;
   try {
@@ -96,23 +102,39 @@ app.post('/cashfree/webhook', express.raw({ type: 'application/json' }), (req, r
     return res.status(400).end();
   }
   const paymentAmount = jsonDecimalToken(rawBody, 'payment_amount');
-  const decision = decideCashfreeEvent({
-    signatureVerified: true,
-    version: req.get('x-webhook-version') ?? '',
-    idempotencyKey: req.get('x-idempotency-key') ?? '',
-    paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
-    paymentAmount,
-    expectedAmount: lookupStoredOrderAmount(event?.data?.order?.order_id),
+  const orderId = event?.data?.order?.order_id;
+  const decision = await db.transaction(async (tx) => {
+    const order = await tx.query(
+      'SELECT prior_status FROM orders WHERE order_id = $1 FOR UPDATE',
+      [orderId],
+    );
+    const seen = await tx.query(
+      'SELECT idempotency_key FROM cashfree_events WHERE order_id = $1',
+      [orderId],
+    );
+    const decision = decideCashfreeEvent({
+      signatureVerified: true,
+      version: req.get('x-webhook-version') ?? '',
+      idempotencyKey: req.get('x-idempotency-key') ?? '',
+      paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
+      paymentAmount,
+      expectedAmount: lookupStoredOrderAmount(orderId),
+      priorStatus: order?.prior_status,
+      seenKeys: seen.map((item) => item.idempotency_key),
+    });
+    if (decision.action === 'amount_mismatch' || decision.action === 'needs_amount' || !decision.storeKey) {
+      return decision;
+    }
+    await tx.query(
+      'INSERT INTO cashfree_events (idempotency_key, order_id) VALUES ($1, $2)',
+      [req.get('x-idempotency-key'), orderId],
+    );
+    await tx.query('UPDATE orders SET prior_status = $2 WHERE order_id = $1', [orderId, decision.priorStatus]);
+    return decision;
   });
-  if (decision.action === 'amount_mismatch' || decision.action === 'needs_amount') {
-    // storeKey is false. Do not insert the idempotency key.
-    return res.status(400).end();
-  }
-  // In one database transaction: insert x-idempotency-key with a unique constraint.
-  // Ship only when decision.fulfil is true. On conflict, commit nothing.
-  // Return 200 only after that commit.
   if (!decision.fulfil) return res.status(decision.httpStatus).end();
-  return res.status(200).end();
+  ship(orderId);
+  return res.status(decision.httpStatus).end();
 });
 ```
 
@@ -136,21 +158,39 @@ export async function POST(req) {
     return new Response(null, { status: 400 });
   }
   const paymentAmount = jsonDecimalToken(rawBody, 'payment_amount');
-  const decision = decideCashfreeEvent({
-    signatureVerified: true,
-    version: req.headers.get('x-webhook-version') ?? '',
-    idempotencyKey: req.headers.get('x-idempotency-key') ?? '',
-    paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
-    paymentAmount,
-    expectedAmount: lookupStoredOrderAmount(event?.data?.order?.order_id),
+  const orderId = event?.data?.order?.order_id;
+  const decision = await db.transaction(async (tx) => {
+    const order = await tx.query(
+      'SELECT prior_status FROM orders WHERE order_id = $1 FOR UPDATE',
+      [orderId],
+    );
+    const seen = await tx.query(
+      'SELECT idempotency_key FROM cashfree_events WHERE order_id = $1',
+      [orderId],
+    );
+    const decision = decideCashfreeEvent({
+      signatureVerified: true,
+      version: req.headers.get('x-webhook-version') ?? '',
+      idempotencyKey: req.headers.get('x-idempotency-key') ?? '',
+      paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
+      paymentAmount,
+      expectedAmount: lookupStoredOrderAmount(orderId),
+      priorStatus: order?.prior_status,
+      seenKeys: seen.map((item) => item.idempotency_key),
+    });
+    if (decision.action === 'amount_mismatch' || decision.action === 'needs_amount' || !decision.storeKey) {
+      return decision;
+    }
+    await tx.query(
+      'INSERT INTO cashfree_events (idempotency_key, order_id) VALUES ($1, $2)',
+      [req.headers.get('x-idempotency-key'), orderId],
+    );
+    await tx.query('UPDATE orders SET prior_status = $2 WHERE order_id = $1', [orderId, decision.priorStatus]);
+    return decision;
   });
-  if (decision.action === 'amount_mismatch' || decision.action === 'needs_amount') {
-    // storeKey is false. Do not insert the idempotency key.
-    return new Response(null, { status: 400 });
-  }
-  // Ship only when decision.fulfil is true. Return 200 only after that commit.
   if (!decision.fulfil) return new Response(null, { status: decision.httpStatus });
-  return new Response(null, { status: 200 });
+  ship(orderId);
+  return new Response(null, { status: decision.httpStatus });
 }
 ```
 

@@ -418,7 +418,7 @@ export function jsonIntegerToken(rawBody, path) {
   const text = rawText(rawBody);
   const found = { value: null };
   const end = walkJson(text, 0, [], path, found, 0);
-  skipSpace(text, end);
+  if (skipSpace(text, end) !== text.length) throw new UsageError('webhook JSON has trailing data');
   return found.value;
 }
 
@@ -471,6 +471,13 @@ export function planRazorpayWebhook(input) {
       paymentCaptured: typeof payment?.captured === 'boolean' ? payment.captured : undefined,
     });
     const persist = decision.storeEventId === true;
+    const priorSeen = Array.isArray(stored.seenEventIds)
+      ? stored.seenEventIds.filter((id) => typeof id === 'string')
+      : [];
+    const eventId = typeof input.eventId === 'string' ? input.eventId : '';
+    const seenEventIds = persist && eventId.length > 0 && !priorSeen.includes(eventId)
+      ? [...priorSeen, eventId]
+      : [...priorSeen];
     return {
       status: decision.httpStatus,
       decision,
@@ -481,6 +488,7 @@ export function planRazorpayWebhook(input) {
         state: decision.state,
         capturedMinor: decision.capturedMinor,
         refundedMinor: decision.refundedMinor,
+        seenEventIds,
       },
     };
   } catch (error) {

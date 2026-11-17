@@ -569,8 +569,9 @@ describe('handlers and evals', () => {
     const skillDecide = skillExpress.indexOf('decideCashfreeEvent(');
     const skillGuard = skillExpress.indexOf("decision.action === 'amount_mismatch'");
     const skillFulfil = skillExpress.indexOf('!decision.fulfil');
-    const skillSuccess = skillExpress.lastIndexOf('status(200)');
-    assert.ok(skillToken > 0 && skillDecide > skillToken && skillGuard > skillDecide);
+    const skillSuccess = skillExpress.lastIndexOf('decision.httpStatus');
+    const skillLock = skillExpress.indexOf('FOR UPDATE');
+    assert.ok(skillToken > 0 && skillLock > skillToken && skillDecide > skillLock && skillGuard > skillDecide);
     assert.ok(skillFulfil > skillGuard && skillSuccess > skillFulfil);
     assert.match(text, /express\.raw\(\{ type: 'application\/json' \}\)/);
     assert.match(text, /await req\.text\(\)/);
@@ -582,21 +583,57 @@ describe('handlers and evals', () => {
     const next = text.slice(text.indexOf('## Next.js'), text.indexOf('## Fastify'));
     const parsed = next.indexOf('JSON.parse(rawBody)');
     const rejected = next.indexOf('status: 400', parsed);
-    const fulfilled = next.lastIndexOf('status: 200');
+    const fulfilled = next.lastIndexOf('decision.httpStatus');
     assert.ok(parsed > 0);
     assert.ok(rejected > parsed);
     assert.ok(fulfilled > rejected);
+    assert.match(next, /FOR UPDATE/);
     assert.doesNotMatch(text, /result\.reason/);
     assert.doesNotMatch(text, /res\.status\(200\)\.end\(\);\n  const event/);
     assert.doesNotMatch(text, /\.update\(JSON\.stringify/);
     const tokenAt = next.indexOf('jsonDecimalToken(');
     const decideAt = next.indexOf('decideCashfreeEvent(');
     const guardAt = next.indexOf("decision.action === 'amount_mismatch'");
-    const successAt = next.lastIndexOf('status: 200');
+    const successAt = next.lastIndexOf('decision.httpStatus');
     assert.ok(tokenAt > 0);
     assert.ok(decideAt > tokenAt);
     assert.ok(guardAt > decideAt);
     assert.ok(successAt > guardAt);
+  });
+
+  test('two SUCCESS keys for one order ship once under the order lock', async () => {
+    let chain = Promise.resolve();
+    let prior = 'none';
+    const keys = [];
+    let shipped = 0;
+    function deliver(key) {
+      const run = chain.then(() => {
+        const decision = decideCashfreeEvent({
+          signatureVerified: true,
+          version: '2025-01-01',
+          idempotencyKey: key,
+          paymentStatus: 'SUCCESS',
+          paymentAmount: '170.00',
+          expectedAmount: '170.00',
+          priorStatus: prior,
+          seenKeys: [...keys],
+        });
+        if (decision.storeKey) {
+          keys.push(key);
+          prior = decision.priorStatus;
+        }
+        return decision;
+      });
+      chain = run.then(() => {}, () => {});
+      return run.then((decision) => {
+        if (decision.fulfil) shipped += 1;
+        return decision;
+      });
+    }
+    const both = await Promise.all([deliver('key-a'), deliver('key-b')]);
+    assert.equal(shipped, 1);
+    assert.equal(both.filter((item) => item.fulfil).length, 1);
+    assert.equal(both.some((item) => item.action === 'already_fulfilled'), true);
   });
 
   test('evals.json expectations match the script', () => {

@@ -80,16 +80,22 @@ Checkout and webhook secrets are different. After a secret rotation, retries of 
 
 Copy from [references/handlers.md](references/handlers.md). Do not pass `JSON.stringify(req.body)`.
 
-Express, registered before `express.json()`. The same plan is in [references/handlers.md](references/handlers.md) for Next.js and Fastify. `amount` in a real body is a JSON number. `planRazorpayWebhook` reads the raw integer token and catches `UsageError` as status 400. Load the payment row first. Return `plan.status` (`decision.httpStatus`). Ship only when `plan.ship` is true.
+Express, registered before `express.json()`. The same plan is in [references/handlers.md](references/handlers.md) for Next.js and Fastify. `amount` in a real body is a JSON number. Catch `UsageError` from `verifyWebhook` (a missing signature is not a string) and return 400. Plan only after `SELECT ... FOR UPDATE`. `seenEventIds` come from the event-id table. Commit, then ship only when `plan.ship` is true. Return `plan.status`.
 
 ```javascript
-app.post('/razorpay/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/razorpay/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const rawBody = req.body;
-  const ok = verifyWebhook({
-    rawBody,
-    signature: req.get('x-razorpay-signature'),
-    secret: process.env.RAZORPAY_WEBHOOK_SECRET,
-  });
+  let ok;
+  try {
+    ok = verifyWebhook({
+      rawBody,
+      signature: req.get('x-razorpay-signature'),
+      secret: process.env.RAZORPAY_WEBHOOK_SECRET,
+    });
+  } catch (error) {
+    if (error instanceof UsageError) return res.status(400).end();
+    throw error;
+  }
   if (!ok) return res.status(400).end();
   let event;
   try {
@@ -98,27 +104,42 @@ app.post('/razorpay/webhook', express.raw({ type: 'application/json' }), (req, r
     return res.status(400).end();
   }
   const paymentId = razorpayPaymentId(event);
-  const stored = lookupStoredPayment(paymentId);
-  let plan;
-  try {
-    plan = planRazorpayWebhook({
+  const plan = await db.transaction(async (tx) => {
+    const row = await tx.query(
+      'SELECT state, captured_minor, refunded_minor FROM payments WHERE id = $1 FOR UPDATE',
+      [paymentId],
+    );
+    const seen = await tx.query(
+      'SELECT event_id FROM razorpay_events WHERE payment_id = $1',
+      [paymentId],
+    );
+    const plan = planRazorpayWebhook({
       signatureVerified: true,
       event,
       eventId: req.get('x-razorpay-event-id') ?? '',
       rawBody,
-      storedPayment: stored,
+      storedPayment: {
+        state: row?.state,
+        capturedMinor: row?.captured_minor,
+        refundedMinor: row?.refunded_minor,
+        seenEventIds: seen.map((item) => item.event_id),
+      },
       expectedAmount: lookupStoredOrderAmount(event?.payload?.payment?.entity?.order_id),
     });
-  } catch (error) {
-    if (error instanceof UsageError) return res.status(400).end();
-    throw error;
-  }
-  if (plan.decision?.action === 'amount_mismatch' || plan.decision?.action === 'needs_amount' || !plan.persist) {
-    return res.status(plan.status).end();
-  }
-  // One transaction: insert x-razorpay-event-id and save plan.payment on plan.paymentId.
-  // Ship only when plan.ship is true. Return plan.status.
-  if (!plan.ship) return res.status(plan.status).end();
+    if (plan.decision?.action === 'amount_mismatch' || plan.decision?.action === 'needs_amount' || !plan.persist) {
+      return plan;
+    }
+    await tx.query(
+      'INSERT INTO razorpay_events (event_id, payment_id) VALUES ($1, $2)',
+      [req.get('x-razorpay-event-id'), paymentId],
+    );
+    await tx.query(
+      'UPDATE payments SET state = $2, captured_minor = $3, refunded_minor = $4 WHERE id = $1',
+      [paymentId, plan.payment.state, plan.payment.capturedMinor, plan.payment.refundedMinor],
+    );
+    return plan;
+  });
+  if (plan.ship) ship(plan.paymentId);
   return res.status(plan.status).end();
 });
 ```

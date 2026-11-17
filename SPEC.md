@@ -314,7 +314,7 @@ metadata: { version: "0.1.0", rules-as-of: "2026-11-01", jurisdiction: "IN" }
 ### 1.13 sms-otp-dlt  (Agent 6)
 - **Rules:**
   - Templates must be registered on DLT; variables are `{#var#}`.
-  - Since **1 Oct 2024**, URLs, APKs, and OTT links that are not in `whitelist` are an error. Callback numbers were deferred: a callback missing from `callbackWhitelist` is a warning, not an error. Press release 53/2024 had included callbacks; the direction of 30 Aug 2024 and press release 60/2024 leave that date open. URL comparison uses ASCII case folding. A URL that matches a whitelist entry only after NFKC is not whitelisted.
+  - Since **1 Oct 2024**, a URL that is not in `whitelist` is an error. The linter flags `http://`, `https://`, and `www.` text. It does not flag a bare APK or OTT name. Callback numbers were deferred: a callback missing from `callbackWhitelist` is a warning, not an error. Press release 53/2024 had included callbacks; the direction of 30 Aug 2024 and press release 60/2024 leave that date open. URL comparison uses ASCII case folding. A URL that matches a whitelist entry only after NFKC is not whitelisted.
   - From 11 Dec 2024, unregistered PE–TM chains are rejected (TRAI PR 92/2024).
   - Header suffixes -P/-S/-T/-G by category — UNVERIFIED (operator notices, 2025).
   - "Max 2 vars", "var not last word" and "≤ 30 chars per var" are operator guidance (MSG91), not TRAI. Lint them as warnings tagged `source:"operator"`.

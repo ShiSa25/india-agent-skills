@@ -500,33 +500,53 @@ describe('handlers and evals', () => {
     assert.match(text, /Do not pass `JSON\.stringify\(req\.body\)`/);
     assert.doesNotMatch(text, /\.update\(JSON\.stringify/);
     assert.match(text, /server-side only/);
-    assert.match(text, /lookupStoredPayment/);
+    assert.match(text, /FOR UPDATE/);
+    assert.match(text, /seenEventIds/);
+    assert.match(text, /razorpay_events/);
     assert.doesNotMatch(text, /typeof entity\?\.amount === 'string'/);
     assert.doesNotMatch(skill, /typeof entity\?\.amount === 'string'/);
+    assert.doesNotMatch(text, /lookupStoredPayment\(paymentId\)/);
     for (const section of [text, skill.slice(skill.indexOf('### Raw body'), skill.indexOf('## Edge cases'))]) {
       assert.match(section, /planRazorpayWebhook\(/);
-      assert.match(section, /lookupStoredPayment\(/);
+      assert.match(section, /FOR UPDATE/);
       assert.match(section, /UsageError/);
       assert.match(section, /plan\.ship/);
       assert.match(section, /plan\.status/);
     }
+    const skillCode = skill.slice(skill.indexOf('app.post'), skill.indexOf('## Edge cases'));
+    const skillLock = skillCode.indexOf('FOR UPDATE');
+    const skillPlan = skillCode.indexOf('planRazorpayWebhook(');
+    const skillShip = skillCode.indexOf('plan.ship');
+    const skillStatus = skillCode.lastIndexOf('plan.status');
+    assert.ok(skillLock > 0 && skillPlan > skillLock && skillShip > skillPlan && skillStatus > skillShip);
     for (const [heading, next] of [['## Express', '## Next.js'], ['## Next.js', '## Fastify'], ['## Fastify', '']]) {
       const start = text.indexOf(heading);
       const end = next ? text.indexOf(next) : text.length;
       const section = text.slice(start, end);
+      const lockAt = section.indexOf('FOR UPDATE');
       const planAt = section.indexOf('planRazorpayWebhook(');
       const guardAt = section.indexOf("plan.decision?.action === 'amount_mismatch'");
-      const shipAt = section.indexOf('!plan.ship');
+      const shipAt = section.indexOf('plan.ship');
       const statusAt = section.lastIndexOf('plan.status');
-      assert.ok(planAt > 0, heading);
+      assert.ok(lockAt > 0, heading);
+      assert.ok(planAt > lockAt, heading);
       assert.ok(guardAt > planAt, heading);
       assert.ok(shipAt > guardAt, heading);
       assert.ok(statusAt > shipAt, heading);
     }
   });
 
-  test('a captured payment then order.paid ships once, and a later refund is 200', () => {
-    const store = { payments: new Map(), orders: new Map(), shipped: [] };
+  test('a missing signature is a usage error and the handler maps it to 400', () => {
+    assert.throws(
+      () => verifyWebhook({ rawBody: '{}', secret: 'whsec_test' }),
+      UsageError,
+    );
+    assert.equal(webhookStatus({ rawBody: '{}', secret: 'whsec_test' }), 400);
+    assert.equal(webhookStatus({ rawBody: '{}', signature: 1, secret: 'whsec_test' }), 400);
+  });
+
+  test('a captured payment then order.paid ships once, and a later refund is 200', async () => {
+    const store = lockedStore();
     store.orders.set('order_1', 50000);
     const captured = {
       event: 'payment.captured',
@@ -534,21 +554,21 @@ describe('handlers and evals', () => {
         payment: { entity: { id: 'pay_1', amount: 50000, order_id: 'order_1', captured: true } },
       },
     };
-    const first = deliver(store, captured, 'evt_cap');
+    const first = await store.deliver(captured, 'evt_cap');
     assert.equal(first.status, 200);
     assert.equal(first.decision.action, 'fulfil');
     assert.equal(first.ship, true);
-    assert.deepEqual(store.shipped, ['pay_1']);
+    assert.deepEqual(store.shipped, ['evt_cap']);
     assert.equal(store.payments.get('pay_1').state, 'captured');
     assert.equal(store.payments.get('pay_1').capturedMinor, '50000');
 
-    const paid = deliver(store, { ...captured, event: 'order.paid' }, 'evt_paid');
+    const paid = await store.deliver({ ...captured, event: 'order.paid' }, 'evt_paid');
     assert.equal(paid.status, 200);
     assert.equal(paid.decision.action, 'already_fulfilled');
     assert.equal(paid.ship, false);
-    assert.deepEqual(store.shipped, ['pay_1']);
+    assert.deepEqual(store.shipped, ['evt_cap']);
 
-    const earlyRefund = deliver(store, {
+    const earlyRefund = await store.deliver({
       event: 'refund.processed',
       payload: {
         refund: { entity: { amount: 1000, payment_id: 'pay_2' } },
@@ -559,7 +579,7 @@ describe('handlers and evals', () => {
     assert.equal(earlyRefund.persist, false);
     assert.equal(store.payments.has('pay_2'), false);
 
-    const refund = deliver(store, {
+    const refund = await store.deliver({
       event: 'refund.processed',
       payload: {
         refund: { entity: { amount: 6000, payment_id: 'pay_1' } },
@@ -570,13 +590,42 @@ describe('handlers and evals', () => {
     assert.equal(refund.decision.action, 'refund');
     assert.equal(refund.ship, false);
     assert.equal(store.payments.get('pay_1').refundedMinor, '6000');
-    assert.deepEqual(store.shipped, ['pay_1']);
+    assert.deepEqual(store.shipped, ['evt_cap']);
 
-    const again = deliver(store, captured, 'evt_cap');
+    const again = await store.deliver(captured, 'evt_cap');
     assert.equal(again.status, 200);
     assert.equal(again.decision.action, 'duplicate');
     assert.equal(again.persist, false);
-    assert.deepEqual(store.shipped, ['pay_1']);
+    assert.deepEqual(store.shipped, ['evt_cap']);
+  });
+
+  test('overlapping capture and refunds under the row lock ship once and keep both refunds', async () => {
+    const store = lockedStore();
+    store.orders.set('order_1', 50000);
+    const payment = { id: 'pay_1', amount: 50000, order_id: 'order_1', captured: true };
+    const captured = { event: 'payment.captured', payload: { payment: { entity: payment } } };
+    const paid = { event: 'order.paid', payload: { payment: { entity: payment } } };
+    const [cap, orderPaid] = await Promise.all([
+      store.deliver(captured, 'evt_cap'),
+      store.deliver(paid, 'evt_paid'),
+    ]);
+    assert.deepEqual(store.shipped, ['evt_cap']);
+    assert.equal([cap, orderPaid].filter((item) => item.ship).length, 1);
+    assert.equal(store.payments.get('pay_1').state, 'captured');
+    const refund = (amount, eventId) => store.deliver({
+      event: 'refund.processed',
+      payload: {
+        refund: { entity: { amount, payment_id: 'pay_1' } },
+        payment: { entity: payment },
+      },
+    }, eventId);
+    const [small, large] = await Promise.all([refund(1000, 'evt_r1'), refund(2000, 'evt_r2')]);
+    assert.equal(small.status, 200);
+    assert.equal(large.status, 200);
+    assert.equal(small.ship, false);
+    assert.equal(large.ship, false);
+    assert.equal(store.payments.get('pay_1').refundedMinor, '3000');
+    assert.deepEqual(store.shipped, ['evt_cap']);
   });
 
   test('a JSON number amount is accepted and an unsafe amount is 400', () => {
@@ -593,6 +642,8 @@ describe('handlers and evals', () => {
     assert.equal(jsonIntegerToken(raw, ['payload', 'order', 'entity', 'amount']), '1');
     assert.throws(() => jsonIntegerToken('{"payload":{"payment":{"entity":{"amount":50000.5}}}}', ['payload', 'payment', 'entity', 'amount']), /integer/);
     assert.throws(() => jsonIntegerToken('{"payload":{"payment":{"entity":{"amount":1e2}}}}', ['payload', 'payment', 'entity', 'amount']), /integer/);
+    assert.throws(() => jsonIntegerToken(`${raw} trailing`, ['payload', 'payment', 'entity', 'amount']), /trailing data/);
+    assert.equal(jsonIntegerToken(`${raw}  \n`, ['payload', 'payment', 'entity', 'amount']), '50000');
     const event = JSON.parse(raw);
     const plan = planRazorpayWebhook({
       signatureVerified: true,
@@ -605,6 +656,7 @@ describe('handlers and evals', () => {
     assert.equal(plan.decision.action, 'fulfil');
     assert.equal(plan.ship, true);
     assert.equal(plan.payment.capturedMinor, '50000');
+    assert.deepEqual(plan.payment.seenEventIds, ['evt_num']);
     const fraction = planRazorpayWebhook({
       signatureVerified: true,
       event: { event: 'payment.captured', payload: { payment: { entity: { id: 'pay_1', amount: 1.5 } } } },
@@ -670,30 +722,56 @@ describe('CLI', () => {
   });
 });
 
-function deliver(store, event, eventId) {
-  const paymentId = razorpayPaymentId(event);
-  const rawBody = JSON.stringify(event);
-  const orderId = event?.payload?.payment?.entity?.order_id;
-  const plan = planRazorpayWebhook({
-    signatureVerified: true,
-    event,
-    eventId,
-    rawBody,
-    storedPayment: store.payments.get(paymentId) ?? null,
-    expectedAmount: orderId === undefined ? undefined : store.orders.get(orderId),
-  });
-  if (!plan.persist) return plan;
-  const prior = store.payments.get(paymentId);
-  const seen = new Set(prior?.seenEventIds ?? []);
-  seen.add(eventId);
-  store.payments.set(paymentId, {
-    state: plan.payment.state,
-    capturedMinor: plan.payment.capturedMinor,
-    refundedMinor: plan.payment.refundedMinor,
-    seenEventIds: [...seen],
-  });
-  if (plan.ship) store.shipped.push(paymentId);
-  return plan;
+function webhookStatus(input) {
+  try {
+    return verifyWebhook(input) ? 200 : 400;
+  } catch (error) {
+    if (error instanceof UsageError) return 400;
+    throw error;
+  }
+}
+
+function lockedStore() {
+  const payments = new Map();
+  const events = new Map();
+  const orders = new Map();
+  const shipped = [];
+  const tails = new Map();
+
+  function deliver(event, eventId) {
+    const paymentId = razorpayPaymentId(event) || '_';
+    const prev = tails.get(paymentId) ?? Promise.resolve();
+    const run = prev.then(() => {
+      const seenEventIds = [...events.entries()].filter(([, id]) => id === paymentId).map(([evt]) => evt);
+      const row = payments.get(paymentId);
+      const plan = planRazorpayWebhook({
+        signatureVerified: true,
+        event,
+        eventId,
+        rawBody: JSON.stringify(event),
+        storedPayment: {
+          state: row?.state,
+          capturedMinor: row?.capturedMinor,
+          refundedMinor: row?.refundedMinor,
+          seenEventIds,
+        },
+        expectedAmount: event?.payload?.payment?.entity?.order_id === undefined
+          ? undefined
+          : orders.get(event.payload.payment.entity.order_id),
+      });
+      if (!plan.persist) return plan;
+      events.set(eventId, paymentId);
+      payments.set(paymentId, { ...plan.payment });
+      return plan;
+    });
+    tails.set(paymentId, run.then(() => {}, () => {}));
+    return run.then((plan) => {
+      if (plan.ship) shipped.push(eventId);
+      return plan;
+    });
+  }
+
+  return { payments, orders, shipped, deliver };
 }
 
 function runExpect(expect) {
