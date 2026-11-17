@@ -76,9 +76,15 @@ When `confirm` is true, tell the user and do not drop the flag. The signature al
 
 Copy from [references/handlers.md](references/handlers.md). Do not pass `JSON.stringify(req.body)`. A parser can turn `payment_amount` `170.00` into `170`. `jsonDecimalToken(rawBody, "payment_amount")` returns the original digits, including when a newline or tab follows the colon. A field name inside a string is not that field. Keys are decoded the way `JSON.parse` decodes them, so `"payment_amoun\u0074"` is `payment_amount`. Every structural `payment_amount` counts, whatever its value. Two of them return null even when the decimal text is the same. A value that is null, a boolean, a string, an object, or an array returns null. A `payment_amount` nested inside the value of another `payment_amount` is not accepted. The kept token is checked against `JSON.parse`: the parsed value must be a finite number equal to that token, and any disagreement returns null. Malformed JSON, including a stray colon, returns null. An exponent returns null. Nesting deeper than 32 objects or arrays returns null and does not throw. Null is `amount_mismatch` and does not fulfil.
 
-Express, registered before `express.json()`:
+Express, registered before `express.json()`. Next.js and Fastify in [references/handlers.md](references/handlers.md) call the same [`examples/apply-webhook.mjs`](examples/apply-webhook.mjs). That file is the node-pg transaction: `query` returns `{ rows, rowCount }`, the order is inserted with `ON CONFLICT DO NOTHING` before `SELECT ... FOR UPDATE`, and the route ships only after it returns. Catch `UsageError` from `verifyCashfreeWebhook` and return 400. Do not keep a second Fastify copy here.
 
 ```javascript
+import pg from 'pg';
+import { UsageError, jsonDecimalToken, verifyCashfreeWebhook } from './cashfree.mjs';
+import { applyCashfreeWebhook } from './examples/apply-webhook.mjs';
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+
 app.post('/cashfree/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const rawBody = req.body;
   let result;
@@ -101,55 +107,49 @@ app.post('/cashfree/webhook', express.raw({ type: 'application/json' }), async (
   } catch {
     return res.status(400).end();
   }
-  const paymentAmount = jsonDecimalToken(rawBody, 'payment_amount');
-  const orderId = event?.data?.order?.order_id;
-  const decision = await db.transaction(async (tx) => {
-    const order = await tx.query(
-      'SELECT prior_status FROM orders WHERE order_id = $1 FOR UPDATE',
-      [orderId],
-    );
-    const seen = await tx.query(
-      'SELECT idempotency_key FROM cashfree_events WHERE order_id = $1',
-      [orderId],
-    );
-    const decision = decideCashfreeEvent({
+  const client = await pool.connect();
+  try {
+    const decision = await applyCashfreeWebhook(client, {
       signatureVerified: true,
+      orderId: event?.data?.order?.order_id,
       version: req.get('x-webhook-version') ?? '',
       idempotencyKey: req.get('x-idempotency-key') ?? '',
       paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
-      paymentAmount,
-      expectedAmount: lookupStoredOrderAmount(orderId),
-      priorStatus: order?.prior_status,
-      seenKeys: seen.map((item) => item.idempotency_key),
+      paymentAmount: jsonDecimalToken(rawBody, 'payment_amount'),
+      expectedAmount: lookupStoredOrderAmount(event?.data?.order?.order_id),
     });
-    if (decision.action === 'amount_mismatch' || decision.action === 'needs_amount' || !decision.storeKey) {
-      return decision;
-    }
-    await tx.query(
-      'INSERT INTO cashfree_events (idempotency_key, order_id) VALUES ($1, $2)',
-      [req.get('x-idempotency-key'), orderId],
-    );
-    await tx.query('UPDATE orders SET prior_status = $2 WHERE order_id = $1', [orderId, decision.priorStatus]);
-    return decision;
-  });
-  if (!decision.fulfil) return res.status(decision.httpStatus).end();
-  ship(orderId);
-  return res.status(decision.httpStatus).end();
+    if (decision.fulfil) ship(event?.data?.order?.order_id);
+    return res.status(decision.httpStatus).end();
+  } finally {
+    client.release();
+  }
 });
 ```
 
 Next.js route handler:
 
 ```javascript
+import pg from 'pg';
+import { UsageError, jsonDecimalToken, verifyCashfreeWebhook } from '../../../scripts/cashfree.mjs';
+import { applyCashfreeWebhook } from '../../../examples/apply-webhook.mjs';
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+
 export async function POST(req) {
   const rawBody = await req.text();
-  const result = verifyCashfreeWebhook({
-    rawBody,
-    timestamp: req.headers.get('x-webhook-timestamp'),
-    signature: req.headers.get('x-webhook-signature'),
-    secret: process.env.CASHFREE_CLIENT_SECRET,
-    nowMs: Date.now(),
-  });
+  let result;
+  try {
+    result = verifyCashfreeWebhook({
+      rawBody,
+      timestamp: req.headers.get('x-webhook-timestamp'),
+      signature: req.headers.get('x-webhook-signature'),
+      secret: process.env.CASHFREE_CLIENT_SECRET,
+      nowMs: Date.now(),
+    });
+  } catch (error) {
+    if (error instanceof UsageError) return new Response(null, { status: 400 });
+    throw error;
+  }
   if (!result.valid) return new Response(null, { status: 400 });
   let event;
   try {
@@ -157,58 +157,26 @@ export async function POST(req) {
   } catch {
     return new Response(null, { status: 400 });
   }
-  const paymentAmount = jsonDecimalToken(rawBody, 'payment_amount');
-  const orderId = event?.data?.order?.order_id;
-  const decision = await db.transaction(async (tx) => {
-    const order = await tx.query(
-      'SELECT prior_status FROM orders WHERE order_id = $1 FOR UPDATE',
-      [orderId],
-    );
-    const seen = await tx.query(
-      'SELECT idempotency_key FROM cashfree_events WHERE order_id = $1',
-      [orderId],
-    );
-    const decision = decideCashfreeEvent({
+  const client = await pool.connect();
+  try {
+    const decision = await applyCashfreeWebhook(client, {
       signatureVerified: true,
+      orderId: event?.data?.order?.order_id,
       version: req.headers.get('x-webhook-version') ?? '',
       idempotencyKey: req.headers.get('x-idempotency-key') ?? '',
       paymentStatus: typeof event?.data?.payment?.payment_status === 'string' ? event.data.payment.payment_status : '',
-      paymentAmount,
-      expectedAmount: lookupStoredOrderAmount(orderId),
-      priorStatus: order?.prior_status,
-      seenKeys: seen.map((item) => item.idempotency_key),
+      paymentAmount: jsonDecimalToken(rawBody, 'payment_amount'),
+      expectedAmount: lookupStoredOrderAmount(event?.data?.order?.order_id),
     });
-    if (decision.action === 'amount_mismatch' || decision.action === 'needs_amount' || !decision.storeKey) {
-      return decision;
-    }
-    await tx.query(
-      'INSERT INTO cashfree_events (idempotency_key, order_id) VALUES ($1, $2)',
-      [req.headers.get('x-idempotency-key'), orderId],
-    );
-    await tx.query('UPDATE orders SET prior_status = $2 WHERE order_id = $1', [orderId, decision.priorStatus]);
-    return decision;
-  });
-  if (!decision.fulfil) return new Response(null, { status: decision.httpStatus });
-  ship(orderId);
-  return new Response(null, { status: decision.httpStatus });
+    if (decision.fulfil) ship(event?.data?.order?.order_id);
+    return new Response(null, { status: decision.httpStatus });
+  } finally {
+    client.release();
+  }
 }
 ```
 
-Fastify:
-
-```javascript
-fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
-  req.rawBody = body;
-  try {
-    done(null, JSON.parse(body.toString('utf8')));
-  } catch (error) {
-    error.statusCode = 400;
-    done(error, undefined);
-  }
-});
-```
-
-Sign `req.rawBody` plus the timestamp header. Do not sign `JSON.stringify(req.body)`.
+Fastify: use the route in [references/handlers.md](references/handlers.md). It keeps `req.rawBody`, calls `applyCashfreeWebhook` on a pooled client, and returns `decision.httpStatus`. Sign `req.rawBody`. Do not sign `JSON.stringify(req.body)`.
 
 ## Edge cases
 

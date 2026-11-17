@@ -14,5 +14,8 @@
     "readme": "node tools/gen-readme.mjs",
     "sync-lib": "node tools/sync-lib.mjs",
     "link-check": "node tools/link-check.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16"
   }
 }

@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { PGlite } from '@electric-sql/pglite';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
@@ -21,6 +22,13 @@ import {
   verifyPaymentSignature,
   verifyWebhook,
 } from '../scripts/razorpay.mjs';
+import {
+  INSERT_EVENT,
+  INSERT_PAYMENT,
+  LOCK_PAYMENT,
+  UPDATE_PAYMENT,
+  applyRazorpayWebhook,
+} from '../examples/apply-webhook.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const skillRoot = join(here, '..');
@@ -491,49 +499,30 @@ describe('events', () => {
 });
 
 describe('handlers and evals', () => {
-  test('Express, Next.js, and Fastify read the raw body', () => {
+  test('handlers.md copies examples/apply-webhook.mjs and the routes call it', () => {
+    const source = readFileSync(join(skillRoot, 'examples', 'apply-webhook.mjs'), 'utf8').trim();
     const text = readFileSync(join(skillRoot, 'references', 'handlers.md'), 'utf8');
     const skill = readFileSync(join(skillRoot, 'SKILL.md'), 'utf8');
-    assert.match(text, /express\.raw\(\{ type: 'application\/json' \}\)/);
-    assert.match(text, /await req\.text\(\)/);
-    assert.match(text, /parseAs: 'buffer'/);
-    assert.match(text, /Do not pass `JSON\.stringify\(req\.body\)`/);
-    assert.doesNotMatch(text, /\.update\(JSON\.stringify/);
-    assert.match(text, /server-side only/);
-    assert.match(text, /FOR UPDATE/);
-    assert.match(text, /seenEventIds/);
-    assert.match(text, /razorpay_events/);
-    assert.doesNotMatch(text, /typeof entity\?\.amount === 'string'/);
-    assert.doesNotMatch(skill, /typeof entity\?\.amount === 'string'/);
-    assert.doesNotMatch(text, /lookupStoredPayment\(paymentId\)/);
-    for (const section of [text, skill.slice(skill.indexOf('### Raw body'), skill.indexOf('## Edge cases'))]) {
-      assert.match(section, /planRazorpayWebhook\(/);
-      assert.match(section, /FOR UPDATE/);
-      assert.match(section, /UsageError/);
-      assert.match(section, /plan\.ship/);
-      assert.match(section, /plan\.status/);
+    assert.ok(text.includes(source));
+    for (const section of [text, skill]) {
+      assert.match(section, /applyRazorpayWebhook\(client/);
+      assert.match(section, /pool\.connect\(\)/);
+      assert.match(section, /if \(plan\.ship\) ship\(plan\.paymentId\)/);
+      assert.doesNotMatch(section, /row\?\.state/);
+      assert.doesNotMatch(section, /seen\.map\(/);
     }
-    const skillCode = skill.slice(skill.indexOf('app.post'), skill.indexOf('## Edge cases'));
-    const skillLock = skillCode.indexOf('FOR UPDATE');
-    const skillPlan = skillCode.indexOf('planRazorpayWebhook(');
-    const skillShip = skillCode.indexOf('plan.ship');
-    const skillStatus = skillCode.lastIndexOf('plan.status');
-    assert.ok(skillLock > 0 && skillPlan > skillLock && skillShip > skillPlan && skillStatus > skillShip);
-    for (const [heading, next] of [['## Express', '## Next.js'], ['## Next.js', '## Fastify'], ['## Fastify', '']]) {
-      const start = text.indexOf(heading);
-      const end = next ? text.indexOf(next) : text.length;
-      const section = text.slice(start, end);
-      const lockAt = section.indexOf('FOR UPDATE');
-      const planAt = section.indexOf('planRazorpayWebhook(');
-      const guardAt = section.indexOf("plan.decision?.action === 'amount_mismatch'");
-      const shipAt = section.indexOf('plan.ship');
-      const statusAt = section.lastIndexOf('plan.status');
-      assert.ok(lockAt > 0, heading);
-      assert.ok(planAt > lockAt, heading);
-      assert.ok(guardAt > planAt, heading);
-      assert.ok(shipAt > guardAt, heading);
-      assert.ok(statusAt > shipAt, heading);
+    const body = applyRazorpayWebhook.toString();
+    const order = ['BEGIN', 'INSERT_PAYMENT', 'LOCK_PAYMENT', 'planRazorpayWebhook', 'INSERT_EVENT', 'UPDATE_PAYMENT', 'rowCount', 'COMMIT'];
+    let at = -1;
+    for (const token of order) {
+      const next = body.indexOf(token, at + 1);
+      assert.ok(next > at, token);
+      at = next;
     }
+    assert.match(INSERT_PAYMENT, /ON CONFLICT \(id\) DO NOTHING/);
+    assert.match(LOCK_PAYMENT, /FOR UPDATE/);
+    assert.match(UPDATE_PAYMENT, /UPDATE payments/);
+    assert.match(INSERT_EVENT, /INSERT INTO razorpay_events/);
   });
 
   test('a missing signature is a usage error and the handler maps it to 400', () => {
@@ -545,87 +534,81 @@ describe('handlers and evals', () => {
     assert.equal(webhookStatus({ rawBody: '{}', signature: 1, secret: 'whsec_test' }), 400);
   });
 
-  test('a captured payment then order.paid ships once, and a later refund is 200', async () => {
-    const store = lockedStore();
-    store.orders.set('order_1', 50000);
-    const captured = {
-      event: 'payment.captured',
-      payload: {
-        payment: { entity: { id: 'pay_1', amount: 50000, order_id: 'order_1', captured: true } },
-      },
-    };
-    const first = await store.deliver(captured, 'evt_cap');
-    assert.equal(first.status, 200);
-    assert.equal(first.decision.action, 'fulfil');
-    assert.equal(first.ship, true);
-    assert.deepEqual(store.shipped, ['evt_cap']);
-    assert.equal(store.payments.get('pay_1').state, 'captured');
-    assert.equal(store.payments.get('pay_1').capturedMinor, '50000');
-
-    const paid = await store.deliver({ ...captured, event: 'order.paid' }, 'evt_paid');
-    assert.equal(paid.status, 200);
-    assert.equal(paid.decision.action, 'already_fulfilled');
-    assert.equal(paid.ship, false);
-    assert.deepEqual(store.shipped, ['evt_cap']);
-
-    const earlyRefund = await store.deliver({
-      event: 'refund.processed',
-      payload: {
-        refund: { entity: { amount: 1000, payment_id: 'pay_2' } },
-        payment: { entity: { id: 'pay_2', captured: true } },
-      },
-    }, 'evt_early');
-    assert.equal(earlyRefund.status, 500);
-    assert.equal(earlyRefund.persist, false);
-    assert.equal(store.payments.has('pay_2'), false);
-
-    const refund = await store.deliver({
-      event: 'refund.processed',
-      payload: {
-        refund: { entity: { amount: 6000, payment_id: 'pay_1' } },
-        payment: { entity: { id: 'pay_1', amount: 50000, captured: true, order_id: 'order_1' } },
-      },
-    }, 'evt_refund');
-    assert.equal(refund.status, 200);
-    assert.equal(refund.decision.action, 'refund');
-    assert.equal(refund.ship, false);
-    assert.equal(store.payments.get('pay_1').refundedMinor, '6000');
-    assert.deepEqual(store.shipped, ['evt_cap']);
-
-    const again = await store.deliver(captured, 'evt_cap');
-    assert.equal(again.status, 200);
-    assert.equal(again.decision.action, 'duplicate');
-    assert.equal(again.persist, false);
-    assert.deepEqual(store.shipped, ['evt_cap']);
-  });
-
-  test('overlapping capture and refunds under the row lock ship once and keep both refunds', async () => {
-    const store = lockedStore();
-    store.orders.set('order_1', 50000);
-    const payment = { id: 'pay_1', amount: 50000, order_id: 'order_1', captured: true };
+  test('published SQL ships once for a new payment and keeps both refunds', async () => {
+    const db = await razorpayDb();
+    const shipped = [];
+    const payment = { id: 'pay_new', amount: 50000, order_id: 'order_1', captured: true };
     const captured = { event: 'payment.captured', payload: { payment: { entity: payment } } };
     const paid = { event: 'order.paid', payload: { payment: { entity: payment } } };
-    const [cap, orderPaid] = await Promise.all([
-      store.deliver(captured, 'evt_cap'),
-      store.deliver(paid, 'evt_paid'),
-    ]);
-    assert.deepEqual(store.shipped, ['evt_cap']);
-    assert.equal([cap, orderPaid].filter((item) => item.ship).length, 1);
-    assert.equal(store.payments.get('pay_1').state, 'captured');
-    const refund = (amount, eventId) => store.deliver({
+    const deliver = async (event, eventId) => {
+      const plan = await applyRazorpayWebhook(db, {
+        signatureVerified: true,
+        event,
+        eventId,
+        rawBody: JSON.stringify(event),
+        expectedAmount: 50000,
+      });
+      if (plan.ship) shipped.push(eventId);
+      return plan;
+    };
+    const first = await deliver(captured, 'evt_cap');
+    const second = await deliver(paid, 'evt_paid');
+    assert.equal(first.ship, true);
+    assert.equal(first.decision.action, 'fulfil');
+    assert.equal(second.ship, false);
+    assert.equal(second.decision.action, 'already_fulfilled');
+    assert.deepEqual(shipped, ['evt_cap']);
+    const saved = await db.query('SELECT state, captured_minor, refunded_minor FROM payments WHERE id = $1', ['pay_new']);
+    assert.equal(saved.rows[0].state, 'captured');
+    assert.equal(saved.rows[0].captured_minor, '50000');
+    assert.equal(saved.rows[0].refunded_minor, '0');
+    const refund = (amount, eventId) => deliver({
       event: 'refund.processed',
       payload: {
-        refund: { entity: { amount, payment_id: 'pay_1' } },
+        refund: { entity: { amount, payment_id: 'pay_new' } },
         payment: { entity: payment },
       },
     }, eventId);
-    const [small, large] = await Promise.all([refund(1000, 'evt_r1'), refund(2000, 'evt_r2')]);
+    const small = await refund(1000, 'evt_r1');
+    const large = await refund(2000, 'evt_r2');
     assert.equal(small.status, 200);
-    assert.equal(large.status, 200);
     assert.equal(small.ship, false);
+    assert.equal(large.status, 200);
     assert.equal(large.ship, false);
-    assert.equal(store.payments.get('pay_1').refundedMinor, '3000');
-    assert.deepEqual(store.shipped, ['evt_cap']);
+    const after = await db.query('SELECT refunded_minor FROM payments WHERE id = $1', ['pay_new']);
+    assert.equal(after.rows[0].refunded_minor, '3000');
+    const again = await deliver(captured, 'evt_cap');
+    assert.equal(again.status, 200);
+    assert.equal(again.ship, false);
+    assert.equal(again.decision.action, 'duplicate');
+    assert.deepEqual(shipped, ['evt_cap']);
+    try {
+      await db.query(INSERT_EVENT, ['evt_cap', 'pay_new']);
+      assert.fail('expected 23505');
+    } catch (error) {
+      assert.equal(error.code, '23505');
+    }
+    const racing = {
+      async query(sql, params) {
+        if (sql === INSERT_EVENT) {
+          const error = new Error('duplicate key');
+          error.code = '23505';
+          throw error;
+        }
+        return db.query(sql, params);
+      },
+    };
+    const raced = await applyRazorpayWebhook(racing, {
+      signatureVerified: true,
+      event: { event: 'payment.captured', payload: { payment: { entity: { ...payment, id: 'pay_race' } } } },
+      eventId: 'evt_race',
+      rawBody: JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_race', amount: 50000, order_id: 'order_1', captured: true } } } }),
+      expectedAmount: 50000,
+    });
+    assert.equal(raced.status, 200);
+    assert.equal(raced.ship, false);
+    const racedRow = await db.query('SELECT id FROM payments WHERE id = $1', ['pay_race']);
+    assert.equal(racedRow.rows.length, 0);
   });
 
   test('a JSON number amount is accepted and an unsafe amount is 400', () => {
@@ -731,47 +714,21 @@ function webhookStatus(input) {
   }
 }
 
-function lockedStore() {
-  const payments = new Map();
-  const events = new Map();
-  const orders = new Map();
-  const shipped = [];
-  const tails = new Map();
-
-  function deliver(event, eventId) {
-    const paymentId = razorpayPaymentId(event) || '_';
-    const prev = tails.get(paymentId) ?? Promise.resolve();
-    const run = prev.then(() => {
-      const seenEventIds = [...events.entries()].filter(([, id]) => id === paymentId).map(([evt]) => evt);
-      const row = payments.get(paymentId);
-      const plan = planRazorpayWebhook({
-        signatureVerified: true,
-        event,
-        eventId,
-        rawBody: JSON.stringify(event),
-        storedPayment: {
-          state: row?.state,
-          capturedMinor: row?.capturedMinor,
-          refundedMinor: row?.refundedMinor,
-          seenEventIds,
-        },
-        expectedAmount: event?.payload?.payment?.entity?.order_id === undefined
-          ? undefined
-          : orders.get(event.payload.payment.entity.order_id),
-      });
-      if (!plan.persist) return plan;
-      events.set(eventId, paymentId);
-      payments.set(paymentId, { ...plan.payment });
-      return plan;
-    });
-    tails.set(paymentId, run.then(() => {}, () => {}));
-    return run.then((plan) => {
-      if (plan.ship) shipped.push(eventId);
-      return plan;
-    });
-  }
-
-  return { payments, orders, shipped, deliver };
+async function razorpayDb() {
+  const db = new PGlite();
+  await db.exec(`
+    CREATE TABLE payments (
+      id text PRIMARY KEY,
+      state text NOT NULL,
+      captured_minor text NOT NULL,
+      refunded_minor text NOT NULL
+    );
+    CREATE TABLE razorpay_events (
+      event_id text PRIMARY KEY,
+      payment_id text NOT NULL
+    );
+  `);
+  return db;
 }
 
 function runExpect(expect) {

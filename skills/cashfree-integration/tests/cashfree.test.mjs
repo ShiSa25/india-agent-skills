@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { PGlite } from '@electric-sql/pglite';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
@@ -13,6 +14,13 @@ import {
   jsonDecimalToken,
   verifyCashfreeWebhook,
 } from '../scripts/cashfree.mjs';
+import {
+  INSERT_KEY,
+  INSERT_ORDER,
+  LOCK_ORDER,
+  UPDATE_ORDER,
+  applyCashfreeWebhook,
+} from '../examples/apply-webhook.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const skillRoot = join(here, '..');
@@ -559,81 +567,106 @@ describe('version, idempotency, and fulfilment', () => {
 });
 
 describe('handlers and evals', () => {
-  test('Express, Next.js, and Fastify read the raw body', () => {
+  test('handlers.md copies examples/apply-webhook.mjs', () => {
+    const source = readFileSync(join(skillRoot, 'examples', 'apply-webhook.mjs'), 'utf8').trim();
     const text = readFileSync(join(skillRoot, 'references', 'handlers.md'), 'utf8');
     const skill = readFileSync(join(skillRoot, 'SKILL.md'), 'utf8');
-    const skillExpress = skill.slice(skill.indexOf('Express, registered'), skill.indexOf('Next.js route handler'));
-    assert.match(skillExpress, /jsonDecimalToken\(/);
-    assert.match(skillExpress, /decideCashfreeEvent\(/);
-    const skillToken = skillExpress.indexOf('jsonDecimalToken(');
-    const skillDecide = skillExpress.indexOf('decideCashfreeEvent(');
-    const skillGuard = skillExpress.indexOf("decision.action === 'amount_mismatch'");
-    const skillFulfil = skillExpress.indexOf('!decision.fulfil');
-    const skillSuccess = skillExpress.lastIndexOf('decision.httpStatus');
-    const skillLock = skillExpress.indexOf('FOR UPDATE');
-    assert.ok(skillToken > 0 && skillLock > skillToken && skillDecide > skillLock && skillGuard > skillDecide);
-    assert.ok(skillFulfil > skillGuard && skillSuccess > skillFulfil);
+    assert.ok(text.includes(source));
     assert.match(text, /express\.raw\(\{ type: 'application\/json' \}\)/);
     assert.match(text, /await req\.text\(\)/);
     assert.match(text, /parseAs: 'buffer'/);
     assert.match(text, /Do not pass `JSON\.stringify\(req\.body\)`/);
     assert.match(text, /x-webhook-timestamp/);
     assert.match(text, /server-side only/);
-    assert.match(text, /Return 200 only after/);
-    const next = text.slice(text.indexOf('## Next.js'), text.indexOf('## Fastify'));
-    const parsed = next.indexOf('JSON.parse(rawBody)');
-    const rejected = next.indexOf('status: 400', parsed);
-    const fulfilled = next.lastIndexOf('decision.httpStatus');
-    assert.ok(parsed > 0);
-    assert.ok(rejected > parsed);
-    assert.ok(fulfilled > rejected);
-    assert.match(next, /FOR UPDATE/);
     assert.doesNotMatch(text, /result\.reason/);
-    assert.doesNotMatch(text, /res\.status\(200\)\.end\(\);\n  const event/);
-    assert.doesNotMatch(text, /\.update\(JSON\.stringify/);
-    const tokenAt = next.indexOf('jsonDecimalToken(');
-    const decideAt = next.indexOf('decideCashfreeEvent(');
-    const guardAt = next.indexOf("decision.action === 'amount_mismatch'");
-    const successAt = next.lastIndexOf('decision.httpStatus');
-    assert.ok(tokenAt > 0);
-    assert.ok(decideAt > tokenAt);
-    assert.ok(guardAt > decideAt);
-    assert.ok(successAt > guardAt);
+    assert.doesNotMatch(text, /order\?\.prior_status/);
+    assert.doesNotMatch(text, /seen\.map\(/);
+    const next = skill.slice(skill.indexOf('Next.js route handler'), skill.indexOf('Fastify:'));
+    assert.match(next, /instanceof UsageError/);
+    assert.match(next, /applyCashfreeWebhook\(client/);
+    assert.match(skill, /references\/handlers\.md/);
+    const body = applyCashfreeWebhook.toString();
+    const order = ['BEGIN', 'INSERT_ORDER', 'LOCK_ORDER', 'decideCashfreeEvent', 'INSERT_KEY', 'UPDATE_ORDER', 'rowCount', 'COMMIT'];
+    let at = -1;
+    for (const token of order) {
+      const found = body.indexOf(token, at + 1);
+      assert.ok(found > at, token);
+      at = found;
+    }
+    assert.match(INSERT_ORDER, /ON CONFLICT \(order_id\) DO NOTHING/);
+    assert.match(LOCK_ORDER, /FOR UPDATE/);
+    assert.match(UPDATE_ORDER, /UPDATE orders/);
+    assert.match(INSERT_KEY, /INSERT INTO cashfree_events/);
   });
 
-  test('two SUCCESS keys for one order ship once under the order lock', async () => {
-    let chain = Promise.resolve();
-    let prior = 'none';
-    const keys = [];
-    let shipped = 0;
-    function deliver(key) {
-      const run = chain.then(() => {
-        const decision = decideCashfreeEvent({
-          signatureVerified: true,
-          version: '2025-01-01',
-          idempotencyKey: key,
-          paymentStatus: 'SUCCESS',
-          paymentAmount: '170.00',
-          expectedAmount: '170.00',
-          priorStatus: prior,
-          seenKeys: [...keys],
-        });
-        if (decision.storeKey) {
-          keys.push(key);
-          prior = decision.priorStatus;
-        }
-        return decision;
+  test('published SQL ships one SUCCESS for a new order', async () => {
+    const db = new PGlite();
+    await db.exec(`
+      CREATE TABLE orders (
+        order_id text PRIMARY KEY,
+        prior_status text NOT NULL
+      );
+      CREATE TABLE cashfree_events (
+        idempotency_key text PRIMARY KEY,
+        order_id text NOT NULL
+      );
+    `);
+    const shipped = [];
+    const deliver = async (key) => {
+      const decision = await applyCashfreeWebhook(db, {
+        signatureVerified: true,
+        orderId: 'order_new',
+        version: '2025-01-01',
+        idempotencyKey: key,
+        paymentStatus: 'SUCCESS',
+        paymentAmount: '170.00',
+        expectedAmount: '170.00',
       });
-      chain = run.then(() => {}, () => {});
-      return run.then((decision) => {
-        if (decision.fulfil) shipped += 1;
-        return decision;
-      });
+      if (decision.fulfil) shipped.push(key);
+      return decision;
+    };
+    const first = await deliver('key-a');
+    const second = await deliver('key-b');
+    assert.equal(first.fulfil, true);
+    assert.equal(second.fulfil, false);
+    assert.equal(second.action, 'already_fulfilled');
+    assert.deepEqual(shipped, ['key-a']);
+    const row = await db.query('SELECT prior_status FROM orders WHERE order_id = $1', ['order_new']);
+    assert.equal(row.rows[0].prior_status, 'SUCCESS');
+    const again = await deliver('key-a');
+    assert.equal(again.httpStatus, 200);
+    assert.equal(again.fulfil, false);
+    assert.equal(again.action, 'duplicate');
+    assert.deepEqual(shipped, ['key-a']);
+    try {
+      await db.query(INSERT_KEY, ['key-a', 'order_new']);
+      assert.fail('expected 23505');
+    } catch (error) {
+      assert.equal(error.code, '23505');
     }
-    const both = await Promise.all([deliver('key-a'), deliver('key-b')]);
-    assert.equal(shipped, 1);
-    assert.equal(both.filter((item) => item.fulfil).length, 1);
-    assert.equal(both.some((item) => item.action === 'already_fulfilled'), true);
+    const racing = {
+      async query(sql, params) {
+        if (sql === INSERT_KEY) {
+          const error = new Error('duplicate key');
+          error.code = '23505';
+          throw error;
+        }
+        return db.query(sql, params);
+      },
+    };
+    const raced = await applyCashfreeWebhook(racing, {
+      signatureVerified: true,
+      orderId: 'order_race',
+      version: '2025-01-01',
+      idempotencyKey: 'key-race',
+      paymentStatus: 'SUCCESS',
+      paymentAmount: '170.00',
+      expectedAmount: '170.00',
+    });
+    assert.equal(raced.httpStatus, 200);
+    assert.equal(raced.fulfil, false);
+    const racedRow = await db.query('SELECT order_id FROM orders WHERE order_id = $1', ['order_race']);
+    assert.equal(racedRow.rows.length, 0);
   });
 
   test('evals.json expectations match the script', () => {
